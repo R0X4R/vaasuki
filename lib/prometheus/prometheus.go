@@ -1,0 +1,60 @@
+package prometheus
+
+import (
+	"crypto/tls"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/R0X4R/vaasuki/pkg/model"
+)
+
+// Verify tests whether an unauthenticated Prometheus metrics server is exposed.
+func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {
+	client := &http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	schemes := []string{"http", "https"}
+	for _, scheme := range schemes {
+		url := fmt.Sprintf("%s://%s:%d/-/healthy", scheme, host, port)
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			continue
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Vaasuki-Recon)")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			continue
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK && strings.Contains(string(body), "Prometheus") {
+			return &model.Finding{
+				Target:     host,
+				Port:       port,
+				Protocol:   scheme,
+				Service:    "prometheus",
+				Title:      "Unauthenticated Prometheus Metrics API Exposed",
+				Severity:   "medium",
+				Confidence: model.Confirmed,
+				Auth: model.AuthResult{
+					Attempted: true,
+					Method:    "none",
+					Status:    "successful",
+				},
+				Evidence:  []string{fmt.Sprintf("HTTP 200: %s", strings.TrimSpace(string(body)))},
+				Timestamp: time.Now().UTC(),
+			}, nil
+		}
+	}
+
+	return nil, nil
+}

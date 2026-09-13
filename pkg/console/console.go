@@ -108,9 +108,4 @@ func Banner(version string) {
 	outMu.Lock()
 	defer outMu.Unlock()
 	color.New(color.Bold, color.FgCyan).Println("Vaasuki - Network Service Reconnaissance and Active Verification Engine")
-	fmt.Fprintf(outDest, "[%s] [%s: %s]\n\n",
-		color.HiGreenString("VERSION"),
-		color.HiYellowString("RELEASE"),
-		version,
-	)
 }
