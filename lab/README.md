@@ -21,7 +21,7 @@ This directory contains a complete Docker Compose test environment covering **al
 | **Service Mesh**| Consul Agent | `vaasuki-consul-vuln` | `8500:8500` | Vulnerable | Unauthenticated agent catalog and status endpoints |
 | **Directory**| LDAP (OpenLDAP) | `vaasuki-ldap-vuln` | `3890:10389` | Vulnerable | Anonymous bind, Base DSE directory disclosure |
 | **Mail** | SMTP (Mailpit) | `vaasuki-smtp-vuln` | `1025:1025` (Web: `8025`) | Controlled | Banner detection, STARTTLS, controlled non-delivery relay probe |
-| **DNS** | CoreDNS | `vaasuki-dns-vuln` | `5353:53` (TCP/UDP) | Vulnerable | CHAOS version query disclosure, recursive query behavior |
+| **DNS** | CoreDNS | `vaasuki-dns-vuln` | `5354:53` (TCP/UDP) | Vulnerable | CHAOS version query disclosure, recursive query behavior |
 | **Queues** | RabbitMQ | `vaasuki-rabbitmq-vuln` | `5672:5672`, `15672:15672` | Exposed | AMQP handshake and management web portal |
 | **Metrics** | Prometheus | `vaasuki-prom-vuln` | `9090:9090` | Exposed | Unauthenticated metrics scrape interface |
 | **Dashboard**| Grafana | `vaasuki-grafana-vuln` | `3000:3000` | Vulnerable | Anonymous Admin login enabled |
@@ -60,7 +60,7 @@ docker compose ps
 ### 5. Running the Scanner
 ```powershell
 # Scan all lab ports locally with active verification
-vaasuki scan -i 127.0.0.1 -p 2121,2122,2323,4445,6379,6380,27017,27018,9200,11211,2375,2379,8500,3890,1025,5353,5672,15672,9090,3000,8080,8088 --verify -o lab_findings.jsonl
+vaasuki scan -i 127.0.0.1 -p 2121,2122,2323,4445,6379,6380,27017,27018,9200,11211,2375,2379,8500,3890,1025,5354,5672,15672,9090,3000,8080,8088 --verify -o lab_findings.jsonl
 ```
 
 ### 6. Tear Down
