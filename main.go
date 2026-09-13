@@ -51,8 +51,8 @@ func run() error {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigChan
-		console.Warnf("Scan interrupted by user, exiting...")
-		os.Exit(0)
+		console.Warnf("Scan interrupted by user, exiting gracefully...")
+		os.Exit(130)
 	}()
 
 	var directEndpoints []target.Target
@@ -142,6 +142,9 @@ func run() error {
 
 	timeout := time.Duration(opts.Timeout) * time.Second
 
+	var openPortsCount int
+	var confirmedCount int
+
 	// 1. Process Direct Endpoints (e.g. from naabu pipe or host:port inputs)
 	for _, ep := range directEndpoints {
 		if scopePolicy != nil && !scopePolicy.IsAllowed(ep.Host) {
@@ -150,8 +153,10 @@ func run() error {
 		}
 
 		if !network.IsPortOpen(ep.Host, ep.Port, timeout) {
+			console.Verbosef("Connection failed: %s:%d (port closed or unreachable)", ep.Host, ep.Port)
 			continue
 		}
+		openPortsCount++
 		console.Verbosef("Open port verified: %s:%d", ep.Host, ep.Port)
 
 		if !opts.Verify {
@@ -166,9 +171,14 @@ func run() error {
 
 		finding, _ := dispatcher.VerifyTarget(svc, ep.Host, ep.Port, timeout)
 		if finding != nil && finding.Confidence == model.Confirmed {
+			confirmedCount++
 			console.Confirmedf("%s %s:%d - %s", console.ProtocolTag(finding.Protocol), ep.Host, ep.Port, finding.Title)
 			recordFinding(opts, finding)
 		}
+	}
+
+	if len(directEndpoints) > 0 && openPortsCount == 0 {
+		console.Errorf("No responsive open ports found across %d endpoints (connection refused or host unreachable)", len(directEndpoints))
 	}
 
 	// 2. Process Host Targets (perform port scan then fingerprint & verify)
@@ -197,12 +207,18 @@ func run() error {
 			}
 		}
 
+		if len(ports) == 0 {
+			console.Warnf("No open ports discovered on target %s", host)
+			continue
+		}
+
 		console.Infof("Scanning target: %s (%d ports)", host, len(ports))
 		for _, port := range ports {
 			if !network.IsPortOpen(host, port, timeout) {
+				console.Verbosef("Connection failed: %s:%d (closed or dropped)", host, port)
 				continue
 			}
-
+			openPortsCount++
 			console.Verbosef("Open port detected: %s:%d", host, port)
 
 			if !opts.Verify {
@@ -217,10 +233,15 @@ func run() error {
 
 			finding, _ := dispatcher.VerifyTarget(svc, host, port, timeout)
 			if finding != nil && finding.Confidence == model.Confirmed {
+				confirmedCount++
 				console.Confirmedf("%s %s:%d - %s", console.ProtocolTag(finding.Protocol), host, port, finding.Title)
 				recordFinding(opts, finding)
 			}
 		}
+	}
+
+	if openPortsCount > 0 && confirmedCount == 0 {
+		console.Verbosef("Verification complete: %d open ports analyzed, no vulnerabilities confirmed", openPortsCount)
 	}
 
 	return nil
