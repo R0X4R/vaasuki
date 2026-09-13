@@ -36,25 +36,39 @@ Most vulnerability scanners rely solely on passive banner grabbing, leading to h
 
 ## Architecture
 
-```text
-Target Input (Domain / IP / CIDR)
-      │
-      ▼
-Scope Policy Validation (Allow / Deny CIDRs)
-      │
-      ▼
-Port Discovery (Naabu v2 Runner / Custom Ports)
-      │
-      ▼
-Protocol Routing
-      ├── Port 21 / 2121   ──> FTP Anonymous Handshake
-      ├── Port 6379 / 6380 ──> Redis Unauthenticated Ping/Info
-      └── Other Ports      ──> Context-Aware TCP Probes
-      │
-      ▼
-Result Classification
-      ├── Rejected / Secured  ──> Discard (Zero False Positives)
-      └── Confirmed Login     ──> [CNF] Finding & JSONL Log
+```mermaid
+graph TD
+    %% Global Node Styles
+    classDef input fill:#1a1c1e,stroke:#30363d,stroke-width:2px,color:#fff;
+    classDef process fill:#1f242c,stroke:#ffbc00,stroke-width:2px,color:#fff;
+    classDef module fill:#161b22,stroke:#58a6ff,stroke-width:2px,color:#fff;
+    classDef success fill:#1b2a1a,stroke:#2ea44f,stroke-width:2px,color:#fff;
+    classDef drop fill:#2a1b1b,stroke:#da3637,stroke-width:2px,color:#fff;
+
+    IN["Target Input<br>(Domain / IP / CIDR)"]:::input
+    SC["Scope Policy Check<br>(Allow / Deny CIDRs)"]:::process
+    PS["Port Discovery<br>(Naabu v2 Runner)"]:::process
+
+    subgraph VerificationModules [" Active Verification Pipeline "]
+        direction TB
+        FTP["FTP Module<br>(Anonymous Login Handshake)"]:::module
+        RDS["Redis Module<br>(Unauthenticated PING/INFO)"]:::module
+        TCP["Network Probes<br>(Context-Aware Dialers)"]:::module
+    end
+
+    SEC["Secured / Rejected<br>(Zero False Positives)"]:::drop
+    CNF["[CNF] Confirmed Finding<br>(Terminal & JSONL Output)"]:::success
+
+    IN --> SC
+    SC -->|In Scope| PS
+    PS -->|Port 21 / 2121| FTP
+    PS -->|Port 6379 / 6380| RDS
+    PS -->|Other Ports| TCP
+
+    FTP -->|Auth Failed 530| SEC
+    FTP -->|Login OK 230| CNF
+    RDS -->|NOAUTH| SEC
+    RDS -->|+PONG| CNF
 ```
 
 ## Installation
