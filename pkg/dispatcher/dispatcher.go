@@ -10,11 +10,15 @@ import (
 	"github.com/R0X4R/vaasuki/lib/ftp"
 	"github.com/R0X4R/vaasuki/lib/grafana"
 	"github.com/R0X4R/vaasuki/lib/jenkins"
+	"github.com/R0X4R/vaasuki/lib/ldap"
 	"github.com/R0X4R/vaasuki/lib/memcached"
 	"github.com/R0X4R/vaasuki/lib/mongo"
 	"github.com/R0X4R/vaasuki/lib/prometheus"
+	"github.com/R0X4R/vaasuki/lib/rabbitmq"
 	"github.com/R0X4R/vaasuki/lib/redis"
 	"github.com/R0X4R/vaasuki/lib/smb"
+	"github.com/R0X4R/vaasuki/lib/smtp"
+	"github.com/R0X4R/vaasuki/lib/telnet"
 	"github.com/R0X4R/vaasuki/pkg/fingerprint"
 	"github.com/R0X4R/vaasuki/pkg/model"
 )
@@ -52,11 +56,23 @@ func VerifyTarget(svc fingerprint.Service, host string, port int, timeout time.D
 	case fingerprint.ServicePrometheus:
 		return prometheus.Verify(host, port, timeout)
 
+	case fingerprint.ServiceRabbitMQ:
+		return rabbitmq.Verify(host, port, timeout)
+
 	case fingerprint.ServiceSMB:
 		return smb.Verify(host, port, timeout)
 
 	case fingerprint.ServiceMongo:
 		return mongo.Verify(host, port, timeout)
+
+	case fingerprint.ServiceLDAP:
+		return ldap.Verify(host, port, timeout)
+
+	case fingerprint.ServiceSMTP:
+		return smtp.Verify(host, port, timeout)
+
+	case fingerprint.ServiceTelnet:
+		return telnet.Verify(host, port, timeout)
 
 	case fingerprint.ServiceHTTP:
 		// Check common high-impact unauthenticated HTTP APIs
@@ -79,6 +95,9 @@ func VerifyTarget(svc fingerprint.Service, host string, port int, timeout time.D
 			return f, nil
 		}
 		if f, _ := prometheus.Verify(host, port, timeout); f != nil {
+			return f, nil
+		}
+		if f, _ := rabbitmq.Verify(host, port, timeout); f != nil {
 			return f, nil
 		}
 	}

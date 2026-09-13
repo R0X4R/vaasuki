@@ -2,6 +2,7 @@ package scope
 
 import (
 	"net"
+	"os"
 	"strings"
 )
 
@@ -14,6 +15,36 @@ type Policy struct {
 	denyNets  []*net.IPNet
 	allowIPs  []net.IP
 	denyIPs   []net.IP
+}
+
+// LoadPolicyFromFile loads scope rules from a file. Lines prefixed with '!' or 'deny:' are deny rules.
+func LoadPolicyFromFile(path string) (*Policy, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	p := &Policy{}
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		line = strings.TrimPrefix(line, "\ufeff")
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if strings.HasPrefix(line, "!") {
+			p.Deny = append(p.Deny, strings.TrimSpace(line[1:]))
+		} else if strings.HasPrefix(strings.ToLower(line), "deny:") {
+			p.Deny = append(p.Deny, strings.TrimSpace(line[5:]))
+		} else if strings.HasPrefix(strings.ToLower(line), "allow:") {
+			p.Allow = append(p.Allow, strings.TrimSpace(line[6:]))
+		} else {
+			p.Allow = append(p.Allow, line)
+		}
+	}
+	if err := p.Compile(); err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 // Compile compiles the allow and deny rules into lookup structures.

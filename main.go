@@ -133,8 +133,11 @@ func run() error {
 
 	var scopePolicy *scope.Policy
 	if opts.ScopeFile != "" {
-		scopePolicy = &scope.Policy{}
-		_ = scopePolicy.Compile()
+		var scopeErr error
+		scopePolicy, scopeErr = scope.LoadPolicyFromFile(opts.ScopeFile)
+		if scopeErr != nil {
+			return fmt.Errorf("failed to load scope policy file: %w", scopeErr)
+		}
 	}
 
 	timeout := time.Duration(opts.Timeout) * time.Second
