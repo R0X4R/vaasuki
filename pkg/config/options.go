@@ -23,10 +23,23 @@ type Options struct {
 	Silent       bool
 	ColorBlind   bool
 	Verbose      bool
+	Version      bool
 }
 
 // ParseOptions parses command-line flags and validates inputs.
 func ParseOptions() (*Options, error) {
+	// Normalize common short flags before parsing
+	for i, arg := range os.Args {
+		switch arg {
+		case "-tp":
+			os.Args[i] = "-top-ports"
+		case "-to":
+			os.Args[i] = "-timeout"
+		case "-nc", "--no-color":
+			os.Args[i] = "-b"
+		}
+	}
+
 	opts := &Options{}
 	flagSet := goflags.NewFlagSet()
 	flagSet.SetDescription("Vaasuki - Automated Service Discovery & Vulnerability Verification")
@@ -57,8 +70,22 @@ func ParseOptions() (*Options, error) {
 		flagSet.BoolVarP(&opts.Verbose, "verbose", "v", false, "\tShow verbose connection diagnostics"),
 	)
 
+	flagSet.CreateGroup("debug", "Debug & Information",
+		flagSet.BoolVar(&opts.Version, "version", false, "\tShow tool version"),
+	)
+
 	if err := flagSet.Parse(); err != nil {
 		return nil, err
+	}
+
+	if opts.Threads <= 0 {
+		opts.Threads = 25
+	}
+	if opts.Timeout <= 0 {
+		opts.Timeout = 3
+	}
+	if opts.RateLimit <= 0 {
+		opts.RateLimit = 1000
 	}
 
 	if opts.TargetsList != "" {

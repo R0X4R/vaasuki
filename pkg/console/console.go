@@ -112,5 +112,15 @@ func Banner(version string) {
 	}
 	outMu.Lock()
 	defer outMu.Unlock()
-	color.New(color.Bold, color.FgCyan).Println("Vaasuki - Automated Service Discovery & Vulnerability Verification")
+	brand := color.New(color.Bold, color.FgCyan).Sprint("Vaasuki")
+	desc := color.New(color.Bold, color.FgWhite).Sprint("Automated Service Discovery & Vulnerability Verification")
+	ver := color.New(color.FgHiBlack).Sprintf("(v%s)", version)
+	fmt.Fprintf(outDest, "%s - %s %s\n", brand, desc, ver)
+}
+
+// Version prints the tool version to output.
+func Version(version string) {
+	outMu.Lock()
+	defer outMu.Unlock()
+	fmt.Fprintf(outDest, "Vaasuki v%s\n", version)
 }

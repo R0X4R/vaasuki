@@ -2,10 +2,13 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -29,10 +32,26 @@ func main() {
 	}
 }
 
+type scanCoordinator struct {
+	opts           *config.Options
+	scopePolicy    *scope.Policy
+	timeout        time.Duration
+	openPortsCount int64
+	confirmedCount int64
+	seenMu         sync.Mutex
+	seenTargets    map[string]bool
+	fileMu         sync.Mutex
+}
+
 func run() error {
 	opts, err := config.ParseOptions()
 	if err != nil {
 		return err
+	}
+
+	if opts.Version {
+		console.Version(Version)
+		return nil
 	}
 
 	if opts.ColorBlind {
@@ -47,12 +66,15 @@ func run() error {
 
 	console.Banner(Version)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigChan
-		console.Warnf("Scan interrupted by user, exiting gracefully...")
-		os.Exit(130)
+		console.Warnf("Scan interrupted by user, shutting down gracefully...")
+		cancel()
 	}()
 
 	var directEndpoints []target.Target
@@ -140,49 +162,26 @@ func run() error {
 		}
 	}
 
-	timeout := time.Duration(opts.Timeout) * time.Second
+	sc := &scanCoordinator{
+		opts:        opts,
+		scopePolicy: scopePolicy,
+		timeout:     time.Duration(opts.Timeout) * time.Second,
+		seenTargets: make(map[string]bool),
+	}
 
-	var openPortsCount int
-	var confirmedCount int
-
-	// 1. Process Direct Endpoints (e.g. from naabu pipe or host:port inputs)
-	for _, ep := range directEndpoints {
-		if scopePolicy != nil && !scopePolicy.IsAllowed(ep.Host) {
-			console.Warnf("Target %s is outside scope policy, skipping", ep.Host)
-			continue
-		}
-
-		if !network.IsPortOpen(ep.Host, ep.Port, timeout) {
-			console.Verbosef("Connection failed: %s:%d (port closed or unreachable)", ep.Host, ep.Port)
-			continue
-		}
-		openPortsCount++
-		console.Verbosef("Open port verified: %s:%d", ep.Host, ep.Port)
-
-		if !opts.Verify {
-			continue
-		}
-
-		// Dynamically detect service; fallback to port-based guessing
-		svc := fingerprint.Identify(ep.Host, ep.Port, timeout)
-		if svc == fingerprint.ServiceUnknown {
-			svc = fingerprint.Guess(ep.Port)
-		}
-
-		finding, _ := dispatcher.VerifyTarget(svc, ep.Host, ep.Port, timeout)
-		if finding != nil && finding.Confidence == model.Confirmed {
-			confirmedCount++
-			console.Confirmedf("%s %s:%d - %s", console.ProtocolTag(finding.Protocol), ep.Host, ep.Port, finding.Title)
-			recordFinding(opts, finding)
+	// 1. Process Direct Endpoints concurrently using worker pool
+	if len(directEndpoints) > 0 {
+		sc.runEndpointWorkers(ctx, directEndpoints)
+		if atomic.LoadInt64(&sc.openPortsCount) == 0 {
+			console.Errorf("No responsive open ports found across %d endpoints (connection refused or host unreachable)", len(directEndpoints))
 		}
 	}
 
-	if len(directEndpoints) > 0 && openPortsCount == 0 {
-		console.Errorf("No responsive open ports found across %d endpoints (connection refused or host unreachable)", len(directEndpoints))
-	}
-
-	// 2. Process Host Targets (perform port scan then fingerprint & verify)
+	// 2. Process Host Targets (perform port scan then fingerprint & verify concurrently)
 	for _, host := range hostTargets {
+		if ctx.Err() != nil {
+			break
+		}
 		if scopePolicy != nil && !scopePolicy.IsAllowed(host) {
 			console.Warnf("Target %s is outside scope policy, skipping", host)
 			continue
@@ -213,45 +212,115 @@ func run() error {
 		}
 
 		console.Infof("Scanning target: %s (%d ports)", host, len(ports))
+		var hostEndpoints []target.Target
 		for _, port := range ports {
-			if !network.IsPortOpen(host, port, timeout) {
-				console.Verbosef("Connection failed: %s:%d (closed or dropped)", host, port)
-				continue
-			}
-			openPortsCount++
-			console.Verbosef("Open port detected: %s:%d", host, port)
-
-			if !opts.Verify {
-				continue
-			}
-
-			// Dynamically detect service; fallback to port-based guessing
-			svc := fingerprint.Identify(host, port, timeout)
-			if svc == fingerprint.ServiceUnknown {
-				svc = fingerprint.Guess(port)
-			}
-
-			finding, _ := dispatcher.VerifyTarget(svc, host, port, timeout)
-			if finding != nil && finding.Confidence == model.Confirmed {
-				confirmedCount++
-				console.Confirmedf("%s %s:%d - %s", console.ProtocolTag(finding.Protocol), host, port, finding.Title)
-				recordFinding(opts, finding)
-			}
+			hostEndpoints = append(hostEndpoints, target.Target{Host: host, Port: port})
 		}
+		sc.runEndpointWorkers(ctx, hostEndpoints)
 	}
 
-	if openPortsCount > 0 && confirmedCount == 0 {
-		console.Verbosef("Verification complete: %d open ports analyzed, no vulnerabilities confirmed", openPortsCount)
+	if atomic.LoadInt64(&sc.openPortsCount) > 0 && atomic.LoadInt64(&sc.confirmedCount) == 0 {
+		console.Verbosef("Verification complete: %d open ports analyzed, no vulnerabilities confirmed", atomic.LoadInt64(&sc.openPortsCount))
 	}
 
 	return nil
 }
 
-func recordFinding(opts *config.Options, finding *model.Finding) {
-	if opts.OutputFile == "" {
+func (sc *scanCoordinator) runEndpointWorkers(ctx context.Context, endpoints []target.Target) {
+	var queue []target.Target
+	sc.seenMu.Lock()
+	for _, ep := range endpoints {
+		key := fmt.Sprintf("%s:%d", ep.Host, ep.Port)
+		if sc.seenTargets[key] {
+			continue
+		}
+		sc.seenTargets[key] = true
+		queue = append(queue, ep)
+	}
+	sc.seenMu.Unlock()
+
+	if len(queue) == 0 {
 		return
 	}
-	f, err := os.OpenFile(opts.OutputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+	workers := sc.opts.Threads
+	if workers > len(queue) {
+		workers = len(queue)
+	}
+	if workers <= 0 {
+		workers = 1
+	}
+
+	jobs := make(chan target.Target, len(queue))
+	for _, ep := range queue {
+		jobs <- ep
+	}
+	close(jobs)
+
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case ep, ok := <-jobs:
+					if !ok {
+						return
+					}
+					sc.verifyEndpoint(ctx, ep)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+}
+
+func (sc *scanCoordinator) verifyEndpoint(ctx context.Context, ep target.Target) {
+	if ctx.Err() != nil {
+		return
+	}
+
+	if sc.scopePolicy != nil && !sc.scopePolicy.IsAllowed(ep.Host) {
+		console.Warnf("Target %s is outside scope policy, skipping", ep.Host)
+		return
+	}
+
+	if !network.IsPortOpen(ep.Host, ep.Port, sc.timeout) {
+		console.Verbosef("Connection failed: %s:%d (closed or dropped)", ep.Host, ep.Port)
+		return
+	}
+
+	atomic.AddInt64(&sc.openPortsCount, 1)
+	console.Verbosef("Open port verified: %s:%d", ep.Host, ep.Port)
+
+	if !sc.opts.Verify {
+		return
+	}
+
+	svc := fingerprint.Identify(ep.Host, ep.Port, sc.timeout)
+	if svc == fingerprint.ServiceUnknown {
+		svc = fingerprint.Guess(ep.Port)
+	}
+
+	finding, _ := dispatcher.VerifyTarget(svc, ep.Host, ep.Port, sc.timeout)
+	if finding != nil && finding.Confidence == model.Confirmed {
+		atomic.AddInt64(&sc.confirmedCount, 1)
+		console.Confirmedf("%s %s:%d - %s", console.ProtocolTag(finding.Protocol), ep.Host, ep.Port, finding.Title)
+		sc.recordFinding(finding)
+	}
+}
+
+func (sc *scanCoordinator) recordFinding(finding *model.Finding) {
+	if sc.opts.OutputFile == "" {
+		return
+	}
+	sc.fileMu.Lock()
+	defer sc.fileMu.Unlock()
+
+	f, err := os.OpenFile(sc.opts.OutputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err == nil {
 		_ = model.WriteFinding(f, *finding)
 		_ = f.Close()
