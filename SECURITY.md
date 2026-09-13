@@ -28,5 +28,5 @@ Only the latest stable release of Vaasuki receives security updates and bug fixe
 
 | Version | Supported |
 | :--- | :--- |
-| `1.0.x` | :white_check_mark: |
-| `< 1.0` | :x: |
+| `2.0.x` | :white_check_mark: |
+| `< 2.0` | :x: |
