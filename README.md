@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">Vaasuki</h1>
+  <img src="image.png" alt="Vaasuki image">
   <p align="center">Automated Service Discovery & Vulnerability Verification</p>
 </p>
 
