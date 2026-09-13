@@ -34,6 +34,7 @@ const (
 	ServiceSMTP          Service = "smtp"
 	ServiceTelnet        Service = "telnet"
 	ServiceLDAP          Service = "ldap"
+	ServiceDNS           Service = "dns"
 	ServiceHTTP          Service = "http"
 	ServiceUnknown       Service = "unknown"
 )
@@ -76,6 +77,8 @@ func Guess(port int) Service {
 		return ServiceSMTP
 	case 445, 4445, 139:
 		return ServiceSMB
+	case 53, 5353, 5354:
+		return ServiceDNS
 	case 389, 3890, 636:
 		return ServiceLDAP
 	case 2375, 2376:
