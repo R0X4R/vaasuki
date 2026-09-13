@@ -21,7 +21,7 @@ I found myself constantly running tedious manual checks across exposed ports. I 
 
 These services are often the lowest-hanging fruit on an external perimeter, yet they frequently lead to critical, high-impact severity bugs like full database takeovers or remote code execution.
 
-Most scanners out there either stop at basic port discovery or flood you with speculative banner-based false positives. I wanted a tool that would do the actual legwork for me and confirm whether a service is genuinely exploitable. That is why I created **Vaasuki**. My goal is simple—turn overlooked, exposed services into verified bug bounty findings instead of just another list of open ports.
+Most scanners out there either stop at basic port discovery or flood you with speculative banner-based false positives. I wanted a tool that would do the actual legwork for me and confirm whether a service is genuinely exploitable. That is why I created **Vaasuki**. My goal is simple. Turn overlooked, exposed services into verified bug bounty findings instead of just another list of open ports.
 
 ## What Makes It Different
 
