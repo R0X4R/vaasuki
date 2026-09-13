@@ -75,6 +75,10 @@ func run() error {
 		<-sigChan
 		console.Warnf("Scan interrupted by user, shutting down gracefully...")
 		cancel()
+		// If user presses Ctrl+C again, force exit immediately
+		<-sigChan
+		console.Warnf("Forced exit requested.")
+		os.Exit(130)
 	}()
 
 	var directEndpoints []target.Target
@@ -199,8 +203,11 @@ func run() error {
 		} else {
 			console.Infof("Running automated Naabu port discovery on: %s", host)
 			var scanErr error
-			ports, scanErr = portscan.ScanWithNaabu(host, opts.Ports, opts.TopPorts, opts.RateLimit, opts.Timeout)
+			ports, scanErr = portscan.ScanWithNaabu(ctx, host, opts.Ports, opts.TopPorts, opts.RateLimit, opts.Timeout)
 			if scanErr != nil {
+				if ctx.Err() != nil {
+					return nil
+				}
 				console.Warnf("Naabu port scan error (%s): %v, falling back to top ports", host, scanErr)
 				ports = []int{21, 2121, 23, 2323, 80, 443, 4445, 6379, 6380, 8080, 8088, 9200, 11211}
 			}

@@ -12,7 +12,7 @@ import (
 )
 
 // ScanWithNaabu invokes Naabu programmatically to scan ports for the specified host.
-func ScanWithNaabu(host string, portsStr string, topPorts string, rate int, timeoutSec int) ([]int, error) {
+func ScanWithNaabu(ctx context.Context, host string, portsStr string, topPorts string, rate int, timeoutSec int) ([]int, error) {
 	var discovered []int
 
 	if rate <= 0 {
@@ -55,7 +55,7 @@ func ScanWithNaabu(host string, portsStr string, topPorts string, rate int, time
 	}
 	defer naabuRunner.Close()
 
-	if err := naabuRunner.RunEnumeration(context.Background()); err != nil {
+	if err := naabuRunner.RunEnumeration(ctx); err != nil {
 		return nil, fmt.Errorf("naabu scan failed: %w", err)
 	}
 
