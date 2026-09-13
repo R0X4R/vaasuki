@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/R0X4R/vaasuki/lib/consul"
+	"github.com/R0X4R/vaasuki/lib/dns"
 	"github.com/R0X4R/vaasuki/lib/dockerapi"
 	"github.com/R0X4R/vaasuki/lib/elastic"
 	"github.com/R0X4R/vaasuki/lib/etcd"
@@ -73,6 +74,9 @@ func VerifyTarget(svc fingerprint.Service, host string, port int, timeout time.D
 
 	case fingerprint.ServiceTelnet:
 		return telnet.Verify(host, port, timeout)
+
+	case fingerprint.ServiceDNS:
+		return dns.Verify(host, port, timeout)
 
 	case fingerprint.ServiceHTTP:
 		// Check common high-impact unauthenticated HTTP APIs
