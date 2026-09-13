@@ -1,6 +1,7 @@
 package portscan
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -37,7 +38,7 @@ func ScanWithNaabu(host string, portsStr string, rate int) ([]int, error) {
 	}
 	defer naabuRunner.Close()
 
-	if err := naabuRunner.RunEnumeration(nil); err != nil {
+	if err := naabuRunner.RunEnumeration(context.Background()); err != nil {
 		return nil, fmt.Errorf("naabu scan failed: %w", err)
 	}
 

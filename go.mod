@@ -3,6 +3,12 @@ module github.com/R0X4R/vaasuki
 go 1.27.0
 
 require (
+	github.com/fatih/color v1.19.0
+	github.com/projectdiscovery/goflags v0.2.1
+	github.com/projectdiscovery/naabu/v2 v2.6.1
+)
+
+require (
 	aead.dev/minisign v0.2.0 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/Mzack9999/gcache v0.0.0-20230410081825-519e28eab057 // indirect
@@ -31,7 +37,6 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/ebitengine/purego v0.10.0 // indirect
-	github.com/fatih/color v1.19.0 // indirect
 	github.com/gaissmai/bart v0.26.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
@@ -72,13 +77,11 @@ require (
 	github.com/projectdiscovery/dnsx v1.2.3 // indirect
 	github.com/projectdiscovery/fastdialer v0.5.6 // indirect
 	github.com/projectdiscovery/freeport v0.0.7 // indirect
-	github.com/projectdiscovery/goflags v0.2.1 // indirect
 	github.com/projectdiscovery/gologger v1.1.68 // indirect
 	github.com/projectdiscovery/hmap v0.0.100 // indirect
 	github.com/projectdiscovery/ipranger v0.0.53 // indirect
 	github.com/projectdiscovery/machineid v0.0.0-20250715113114-c77eb3567582 // indirect
 	github.com/projectdiscovery/mapcidr v1.1.97 // indirect
-	github.com/projectdiscovery/naabu/v2 v2.6.1 // indirect
 	github.com/projectdiscovery/networkpolicy v0.1.37 // indirect
 	github.com/projectdiscovery/ratelimit v0.0.86 // indirect
 	github.com/projectdiscovery/retryabledns v1.0.114 // indirect
@@ -89,9 +92,7 @@ require (
 	github.com/remeh/sizedwaitgroup v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
-	github.com/shirou/gopsutil/v3 v3.23.7 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.3 // indirect
-	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/sorairolake/lzip-go v0.3.8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/syndtr/goleveldb v1.0.0 // indirect
