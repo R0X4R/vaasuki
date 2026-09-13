@@ -9,19 +9,19 @@ import (
 
 // Options holds all user-configurable parameters parsed from flags.
 type Options struct {
-	Target       string
-	TargetsList  string
-	Ports        string
-	TopPorts     string
-	Threads      int
-	Timeout      int
-	RateLimit    int
-	Verify       bool
-	ScopeFile    string
-	OutputFile   string
-	JSONOutput   bool
-	Silent       bool
-	ColorBlind   bool
+	Target            string
+	TargetsList       string
+	Ports             string
+	TopPorts          string
+	Threads           int
+	Timeout           int
+	RateLimit         int
+	Verify            bool
+	ScopeFile         string
+	OutputFile        string
+	JSONOutput        bool
+	Silent            bool
+	ColorBlind        bool
 	Verbose           bool
 	Version           bool
 	SkipHostDiscovery bool
@@ -31,7 +31,7 @@ type Options struct {
 func ParseOptions() (*Options, error) {
 	opts := &Options{}
 	flagSet := goflags.NewFlagSet()
-	flagSet.SetDescription("Vaasuki - Automated Service Discovery & Vulnerability Verification")
+	flagSet.SetDescription("Vaasuki - Hunt Vulnerabilities in Exposed Services")
 
 	flagSet.CreateGroup("input", "Input",
 		flagSet.StringVarP(&opts.Target, "target", "u", "", "\tSingle target host, IP, or CIDR block"),
