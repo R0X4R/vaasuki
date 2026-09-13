@@ -112,7 +112,7 @@ func Banner(version string) {
 	}
 	outMu.Lock()
 	defer outMu.Unlock()
-	brand := color.New(color.Bold, color.FgHiCyan).Sprint("Vaasuki - Automated Service Discovery & Vulnerability Verification")
+	brand := color.New(color.Bold, color.FgHiCyan).Sprint("Vaasuki - Automated Service Discovery & Vulnerability Verification\n")
 	ver := color.New(color.FgHiBlack).Sprintf("(v%s)", version)
 	fmt.Fprintf(outDest, "%s %s\n", brand, ver)
 }
