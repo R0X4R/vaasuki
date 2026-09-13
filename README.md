@@ -25,13 +25,13 @@ Most scanners out there either stop at basic port discovery or flood you with sp
 
 ## What Makes It Different
 
-* **Real Active Verification** — Instead of guessing based on version banners, Vaasuki actively completes safe, non-destructive protocol handshakes to prove whether authentication is truly missing.
-* **Protocol-First Fingerprinting** — Even when services run on unusual or non-standard ports, Vaasuki speaks their native wire protocols to identify them dynamically.
-* **Pipeline-Ready** — You can pipe results directly from tools like Naabu or Masscan (`naabu -host target.com | vaasuki`) so you skip port scanning entirely and jump straight to verification.
-* **Fast Pre-Flight Host Discovery** — It quickly weeds out dead IPs or unresolvable domains before starting scans, saving you time. You can also pass `-Pn` to treat all targets as online.
-* **Concurrent Worker Pool** — Built with worker goroutines to check thousands of ports and endpoints concurrently.
-* **Strict Scope Boundaries** — Supports allow and deny CIDR lists with explicit exclusions so you stay strictly within your testing scope.
-* **Clean Terminal and JSONL Output** — Delivers highlighted status tags (`[CNF]`, `[HIT]`, `[INF]`, `[WRN]`, `[ERR]`) and writes structured JSONL files for easy reporting.
+* **Real Active Verification** - Instead of guessing based on version banners, Vaasuki actively completes safe, non-destructive protocol handshakes to prove whether authentication is truly missing.
+* **Protocol-First Fingerprinting** - Even when services run on unusual or non-standard ports, Vaasuki speaks their native wire protocols to identify them dynamically.
+* **Pipeline-Ready** - You can pipe results directly from tools like Naabu or Masscan (`naabu -host target.com | vaasuki`) so you skip port scanning entirely and jump straight to verification.
+* **Fast Pre-Flight Host Discovery** - It quickly weeds out dead IPs or unresolvable domains before starting scans, saving you time. You can also pass `-Pn` to treat all targets as online.
+* **Concurrent Worker Pool** - Built with worker goroutines to check thousands of ports and endpoints concurrently.
+* **Strict Scope Boundaries** - Supports allow and deny CIDR lists with explicit exclusions so you stay strictly within your testing scope.
+* **Clean Terminal and JSONL Output** - Delivers highlighted status tags (`[CNF]`, `[HIT]`, `[INF]`, `[WRN]`, `[ERR]`) and writes structured JSONL files for easy reporting.
 
 ## Verified Services
 
@@ -83,9 +83,7 @@ go install -v github.com/R0X4R/vaasuki@latest
 **Build from source**
 
 ```bash
-git clone https://github.com/R0X4R/vaasuki.git
-cd vaasuki
-go build -o vaasuki main.go
+git clone https://github.com/R0X4R/vaasuki.git && cd vaasuki && go build -o vaasuki main.go
 ```
 
 

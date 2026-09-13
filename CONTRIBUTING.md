@@ -2,8 +2,6 @@
 
 First of all, thank you for considering contributing to **Vaasuki**! Contributions from the security research and open-source community are what make tools like this thrive.
 
----
-
 ## Code of Conduct & Attribution Ethics
 
 Open-source software is built on collaboration, mutual respect, and transparency. 
@@ -18,7 +16,6 @@ Open-source software is built on collaboration, mutual respect, and transparency
 > 
 > Learning from and building upon each other's work is celebrated in open source—taking someone else's effort and claiming it as solely your own is not. Please respect fellow creators and honor the community spirit.
 
----
 
 ## How Can You Contribute?
 
@@ -36,7 +33,6 @@ We actively welcome new protocol verifiers under `lib/`. When contributing a new
 ### 3. Improving Performance & Fingerprinting
 - PRs that optimize concurrency, reduce packet roundtrips, or improve wire-protocol signatures are always appreciated.
 
----
 
 ## Development Workflow
 

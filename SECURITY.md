@@ -6,8 +6,6 @@
 
 Scanning networks, hosts, or systems without prior explicit authorization from the asset owner is illegal and unethical. The author and contributors accept no liability and are not responsible for any misuse, damage, or legal consequences caused by this program.
 
----
-
 ## Reporting a Vulnerability
 
 We take the security and integrity of Vaasuki seriously. If you discover a security vulnerability or critical bug within Vaasuki itself:
@@ -19,8 +17,6 @@ We take the security and integrity of Vaasuki seriously. If you discover a secur
 ### What to Expect
 - We will acknowledge receipt of your vulnerability report within 48 hours.
 - A patched version will be prepared, verified, and released with proper credit attributed to the reporter (unless requested otherwise).
-
----
 
 ## Supported Versions
 
