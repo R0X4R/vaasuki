@@ -78,6 +78,9 @@ func run() error {
 					hostTargets = append(hostTargets, t.Host)
 				}
 			}
+			if scanErr := scanner.Err(); scanErr != nil {
+				return fmt.Errorf("error reading stdin: %w", scanErr)
+			}
 		}
 	}
 
@@ -102,6 +105,10 @@ func run() error {
 			} else {
 				hostTargets = append(hostTargets, t.Host)
 			}
+		}
+		if scanErr := scanner.Err(); scanErr != nil {
+			_ = file.Close()
+			return fmt.Errorf("error reading target file: %w", scanErr)
 		}
 		_ = file.Close()
 	}
