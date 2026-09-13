@@ -98,7 +98,7 @@ func run() error {
 				continue
 			}
 
-			console.Infof("Open port detected: %s:%d", host, port)
+			console.Verbosef("Open port detected: %s:%d", host, port)
 
 			if !opts.Verify {
 				continue
