@@ -45,42 +45,42 @@ func Infof(format string, args ...any) {
 	}
 	outMu.Lock()
 	defer outMu.Unlock()
-	tag := color.BlueString("[INF]")
+	tag := fmt.Sprintf("[%s]", color.BlueString("INF"))
 	fmt.Fprintf(outDest, "%s "+format+"\n", append([]any{tag}, args...)...)
 }
 
-// Warnf prints a warning message with a yellow [WRN] prefix.
+// Warnf prints a warning message with a yellow WRN inside uncolored brackets.
 func Warnf(format string, args ...any) {
 	if silent {
 		return
 	}
 	outMu.Lock()
 	defer outMu.Unlock()
-	tag := color.YellowString("[WRN]")
+	tag := fmt.Sprintf("[%s]", color.YellowString("WRN"))
 	fmt.Fprintf(outDest, "%s "+format+"\n", append([]any{tag}, args...)...)
 }
 
-// Errorf prints an error message with a red [ERR] prefix.
+// Errorf prints an error message with a red ERR inside uncolored brackets.
 func Errorf(format string, args ...any) {
 	outMu.Lock()
 	defer outMu.Unlock()
-	tag := color.RedString("[ERR]")
+	tag := fmt.Sprintf("[%s]", color.RedString("ERR"))
 	fmt.Fprintf(outDest, "%s "+format+"\n", append([]any{tag}, args...)...)
 }
 
-// Hitf prints a potential hit message with a magenta [HIT] prefix.
+// Hitf prints a potential hit message with a magenta HIT inside uncolored brackets.
 func Hitf(format string, args ...any) {
 	outMu.Lock()
 	defer outMu.Unlock()
-	tag := color.HiMagentaString("[HIT]")
+	tag := fmt.Sprintf("[%s]", color.HiMagentaString("HIT"))
 	fmt.Fprintf(outDest, "%s "+format+"\n", append([]any{tag}, args...)...)
 }
 
-// Confirmedf prints a verified finding message with a green [CNF] prefix.
+// Confirmedf prints a verified finding message with a green CNF inside uncolored brackets.
 func Confirmedf(format string, args ...any) {
 	outMu.Lock()
 	defer outMu.Unlock()
-	tag := color.HiGreenString("[CNF]")
+	tag := fmt.Sprintf("[%s]", color.HiGreenString("CNF"))
 	fmt.Fprintf(outDest, "%s "+format+"\n", append([]any{tag}, args...)...)
 }
 
