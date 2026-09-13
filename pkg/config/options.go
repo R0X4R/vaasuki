@@ -34,8 +34,8 @@ func ParseOptions() (*Options, error) {
 	flagSet.CreateGroup("input", "Input Target Options",
 		flagSet.StringVarP(&opts.Target, "target", "u", "", "\tSingle target host, IP, or CIDR block"),
 		flagSet.StringVarP(&opts.TargetsList, "list", "l", "", "\tFile containing list of targets"),
-		flagSet.StringVarP(&opts.Ports, "ports", "p", "", "\tPorts to scan (e.g. 21,22,80,6379 or 1-1000)"),
-		flagSet.StringVarP(&opts.TopPorts, "top-ports", "tp", "", "\tTop ports to scan via naabu (100, 1000)"),
+		flagSet.StringVarP(&opts.Ports, "ports", "p", "", "\tPorts to scan (defaults to all 0-65535, or e.g. 21,22,80,6379, 1-1000)"),
+		flagSet.StringVarP(&opts.TopPorts, "top-ports", "tp", "", "\tTop ports to scan via naabu (100, 1000, 10000)"),
 	)
 
 	flagSet.CreateGroup("verification", "Verification & Safety",
@@ -45,8 +45,8 @@ func ParseOptions() (*Options, error) {
 
 	flagSet.CreateGroup("performance", "Performance & Optimization",
 		flagSet.IntVarP(&opts.Threads, "threads", "t", 25, "\tNumber of concurrent workers"),
-		flagSet.IntVarP(&opts.Timeout, "timeout", "to", 5, "\tConnection timeout in seconds"),
-		flagSet.IntVarP(&opts.RateLimit, "rate", "r", 50, "\tMaximum connection attempts per second"),
+		flagSet.IntVarP(&opts.Timeout, "timeout", "to", 3, "\tConnection timeout in seconds"),
+		flagSet.IntVarP(&opts.RateLimit, "rate", "r", 1000, "\tMaximum connection attempts per second"),
 	)
 
 	flagSet.CreateGroup("output", "Output & Reporting",

@@ -1,16 +1,18 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
-	"github.com/R0X4R/vaasuki/lib/ftp"
-	"github.com/R0X4R/vaasuki/lib/redis"
 	"github.com/R0X4R/vaasuki/pkg/config"
 	"github.com/R0X4R/vaasuki/pkg/console"
+	"github.com/R0X4R/vaasuki/pkg/dispatcher"
+	"github.com/R0X4R/vaasuki/pkg/fingerprint"
 	"github.com/R0X4R/vaasuki/pkg/model"
 	"github.com/R0X4R/vaasuki/pkg/network"
 	"github.com/R0X4R/vaasuki/pkg/portscan"
@@ -53,41 +55,134 @@ func run() error {
 		os.Exit(0)
 	}()
 
+	var directEndpoints []target.Target
+	var hostTargets []string
+
+	// Check if piped from stdin (e.g. naabu -host domain.com | vaasuki)
 	if opts.Target == "" && opts.TargetsList == "" {
-		return fmt.Errorf("no target specified; use -u <target> or -l <file>")
+		stat, statErr := os.Stdin.Stat()
+		if statErr == nil && (stat.Mode()&os.ModeCharDevice) == 0 {
+			scanner := bufio.NewScanner(os.Stdin)
+			for scanner.Scan() {
+				line := strings.TrimSpace(scanner.Text())
+				if line == "" {
+					continue
+				}
+				t, hasPort, parseErr := target.ParseTargetLine(line)
+				if parseErr != nil {
+					continue
+				}
+				if hasPort {
+					directEndpoints = append(directEndpoints, t)
+				} else {
+					hostTargets = append(hostTargets, t.Host)
+				}
+			}
+		}
 	}
 
-	var targets []string
+	// Read from target file (-l)
+	if opts.TargetsList != "" {
+		file, err := os.Open(opts.TargetsList)
+		if err != nil {
+			return fmt.Errorf("failed to open target file: %w", err)
+		}
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" {
+				continue
+			}
+			t, hasPort, parseErr := target.ParseTargetLine(line)
+			if parseErr != nil {
+				continue
+			}
+			if hasPort {
+				directEndpoints = append(directEndpoints, t)
+			} else {
+				hostTargets = append(hostTargets, t.Host)
+			}
+		}
+		_ = file.Close()
+	}
+
+	// Read single target (-u)
 	if opts.Target != "" {
-		targets = append(targets, opts.Target)
+		t, hasPort, parseErr := target.ParseTargetLine(opts.Target)
+		if parseErr == nil {
+			if hasPort {
+				directEndpoints = append(directEndpoints, t)
+			} else {
+				hostTargets = append(hostTargets, t.Host)
+			}
+		} else {
+			hostTargets = append(hostTargets, opts.Target)
+		}
+	}
+
+	if len(directEndpoints) == 0 && len(hostTargets) == 0 {
+		return fmt.Errorf("no target specified; use -u <target>, -l <file>, or pipe from naabu")
 	}
 
 	var scopePolicy *scope.Policy
 	if opts.ScopeFile != "" {
-		// load scope policy if provided
 		scopePolicy = &scope.Policy{}
 		_ = scopePolicy.Compile()
 	}
 
 	timeout := time.Duration(opts.Timeout) * time.Second
 
-	for _, host := range targets {
+	// 1. Process Direct Endpoints (e.g. from naabu pipe or host:port inputs)
+	for _, ep := range directEndpoints {
+		if scopePolicy != nil && !scopePolicy.IsAllowed(ep.Host) {
+			console.Warnf("Target %s is outside scope policy, skipping", ep.Host)
+			continue
+		}
+
+		if !network.IsPortOpen(ep.Host, ep.Port, timeout) {
+			continue
+		}
+		console.Verbosef("Open port verified: %s:%d", ep.Host, ep.Port)
+
+		if !opts.Verify {
+			continue
+		}
+
+		// Dynamically detect service; fallback to port-based guessing
+		svc := fingerprint.Identify(ep.Host, ep.Port, timeout)
+		if svc == fingerprint.ServiceUnknown {
+			svc = fingerprint.Guess(ep.Port)
+		}
+
+		finding, _ := dispatcher.VerifyTarget(svc, ep.Host, ep.Port, timeout)
+		if finding != nil && finding.Confidence == model.Confirmed {
+			console.Confirmedf("[%s] %s:%d - %s", finding.Protocol, ep.Host, ep.Port, finding.Title)
+			recordFinding(opts, finding)
+		}
+	}
+
+	// 2. Process Host Targets (perform port scan then fingerprint & verify)
+	for _, host := range hostTargets {
 		if scopePolicy != nil && !scopePolicy.IsAllowed(host) {
 			console.Warnf("Target %s is outside scope policy, skipping", host)
 			continue
 		}
 
 		var ports []int
-		if opts.Ports != "" {
-			ports, err = target.ParsePortList(opts.Ports)
-			if err != nil {
-				return err
+		trimmedPorts := strings.TrimSpace(opts.Ports)
+		if trimmedPorts != "" && trimmedPorts != "-" && trimmedPorts != "all" && trimmedPorts != "full" && opts.TopPorts == "" {
+			// User specified explicit ports (e.g. -p 80,443 or -p 80-90)
+			var pErr error
+			ports, pErr = target.ParsePortList(trimmedPorts)
+			if pErr != nil {
+				return pErr
 			}
 		} else {
 			console.Infof("Running automated Naabu port discovery on: %s", host)
-			ports, err = portscan.ScanWithNaabu(host, "", opts.TopPorts, opts.RateLimit)
-			if err != nil {
-				console.Warnf("Naabu port scan error (%s): %v, falling back to top ports", host, err)
+			var scanErr error
+			ports, scanErr = portscan.ScanWithNaabu(host, opts.Ports, opts.TopPorts, opts.RateLimit, opts.Timeout)
+			if scanErr != nil {
+				console.Warnf("Naabu port scan error (%s): %v, falling back to top ports", host, scanErr)
 				ports = []int{21, 2121, 23, 2323, 80, 443, 4445, 6379, 6380, 8080, 8088, 9200, 11211}
 			}
 		}
@@ -104,27 +199,30 @@ func run() error {
 				continue
 			}
 
-			var finding *model.Finding
-			switch port {
-			case 21, 2121:
-				finding, _ = ftp.Verify(host, port, timeout)
-			case 6379, 6380:
-				finding, _ = redis.Verify(host, port, timeout)
+			// Dynamically detect service; fallback to port-based guessing
+			svc := fingerprint.Identify(host, port, timeout)
+			if svc == fingerprint.ServiceUnknown {
+				svc = fingerprint.Guess(port)
 			}
 
+			finding, _ := dispatcher.VerifyTarget(svc, host, port, timeout)
 			if finding != nil && finding.Confidence == model.Confirmed {
 				console.Confirmedf("[%s] %s:%d - %s", finding.Protocol, host, port, finding.Title)
-				if opts.OutputFile != "" {
-					f, err := os.OpenFile(opts.OutputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-					if err == nil {
-						_ = model.WriteFinding(f, *finding)
-						_ = f.Close()
-					}
-				}
+				recordFinding(opts, finding)
 			}
 		}
 	}
 
-	console.Infof("Scan completed.")
 	return nil
+}
+
+func recordFinding(opts *config.Options, finding *model.Finding) {
+	if opts.OutputFile == "" {
+		return
+	}
+	f, err := os.OpenFile(opts.OutputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err == nil {
+		_ = model.WriteFinding(f, *finding)
+		_ = f.Close()
+	}
 }
