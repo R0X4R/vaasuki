@@ -6,6 +6,7 @@
 <p align="center">
   <a href="#overview">Overview</a> •
   <a href="#features">Features</a> •
+  <a href="#supported-services">Supported Services</a> •
   <a href="#architecture">Architecture</a> •
   <a href="#installation">Installation</a> •
   <a href="#usage">Usage</a> •
@@ -18,23 +19,45 @@
 
 Vaasuki is a high-performance network reconnaissance and service verification tool written in Go.
 
-Most vulnerability scanners rely solely on passive banner grabbing, leading to high rates of false positives caused by backported patches and deceptive banners. Vaasuki eliminates false positives by dynamically fingerprinting exposed services and actively executing safe, non-destructive protocol handshakes (such as anonymous FTP logins, unauthenticated Redis commands, exposed Docker daemon APIs, and MongoDB administrative queries) to confirm actual exploitability before reporting findings.
+Most vulnerability scanners rely solely on passive banner grabbing, leading to high rates of false positives caused by backported patches and deceptive banners. Vaasuki eliminates false positives by dynamically fingerprinting exposed services and actively executing safe, non-destructive protocol handshakes (such as anonymous FTP logins, unauthenticated Redis commands, exposed Docker daemon APIs, LDAP anonymous directory binds, and MongoDB administrative queries) to confirm actual exploitability before reporting findings.
 
 ## Features
 
-* **Dynamic Service Fingerprinting:** Probes live open ports to detect underlying application protocols (FTP, Redis, Memcached, Elasticsearch, Docker API, etcd, Consul, Grafana, Jenkins, Prometheus, SMB, MongoDB) and falls back to port heuristics when inconclusive.
+* **Dynamic Service Fingerprinting:** Probes live open ports to detect underlying application protocols (FTP, Redis, Memcached, Elasticsearch, Docker API, etcd, Consul, Grafana, Jenkins, Prometheus, SMB, MongoDB, LDAP, SMTP, Telnet, DNS, RabbitMQ) and falls back to port heuristics when inconclusive.
 * **Active Verification:** Handshakes directly with target services to verify authentication states, eliminating banner-based false positives.
 * **Integrated Port Discovery:** Embeds ProjectDiscovery's Naabu v2 runner to scan open ports automatically across all 65,535 ports by default, or focused top port sets (100, 1000, 10000).
 * **Pipeline Integration:** Accepts piped input from tools like Naabu (`naabu -host target.com | vaasuki`), skipping duplicate port discovery and immediately executing service fingerprinting and active verification.
-* **Strict Scope Validation:** Evaluates target hosts, IPs, and CIDRs against allow and deny policies to keep operations within authorized boundaries.
+* **Strict Scope Validation:** Evaluates target hosts, IPs, and CIDRs against allow and deny policies with support for explicit exclusions (`!ip` or `deny:`) to keep operations within authorized boundaries.
 * **Three-Letter Status Output:** Clean console logging using colored three-letter status tags inside plain square brackets:
   * `[INF]` (Blue): Informational updates and operational progress
   * `[WRN]` (Yellow): Target warnings and non-fatal anomalies
   * `[ERR]` (Red): Connection errors and fatal drops
   * `[HIT]` (Magenta): Discovered exposures and potential weaknesses
-  * `[CNF]` (Green): Confirmed findings and verified logins
+  * `[CNF]` (Green): Confirmed findings with highlighted protocol labels
 * **Colorblind Friendly:** Built-in `-b` / `--color-blind` option to disable terminal ANSI sequences cleanly.
 * **Structured Output:** Emits findings to JSONL for integration into Unix pipelines and reporting tools.
+
+## Supported Services
+
+| Protocol / Service | Default Ports | Verification Method | Verified Finding |
+| :--- | :--- | :--- | :--- |
+| **FTP** | `21`, `2121` | Active `USER anonymous` / `PASS anonymous@` handshake | FTP Anonymous Authentication Enabled |
+| **Telnet** | `23`, `2323` | Cleartext IAC negotiation and login prompt verification | Exposed Insecure Telnet Cleartext Protocol Service |
+| **SMB / Samba** | `445`, `4445` | NetBIOS & SMBv1/v2 dialect negotiation packet exchange | Active SMBv1/SMBv2 File Sharing Service Detected |
+| **Redis** | `6379`, `6380` | Unauthenticated `PING` command requiring `+PONG` | Unauthenticated Redis Database Access |
+| **MongoDB** | `27017`, `27018`| Modern OP_MSG wire protocol `listDatabases` query | Unauthenticated MongoDB Administrative Database Access |
+| **Elasticsearch** | `9200`, `9300` | HTTP GET `/` and `/_cat/health` cluster verification | Unauthenticated Elasticsearch Cluster Access |
+| **Memcached** | `11211` | TCP ASCII protocol `version` and `stats` execution | Unauthenticated Memcached Server Access |
+| **Docker API** | `2375`, `2376` | Exposed REST API probe via `/_ping` and `/version` | Exposed Docker Daemon API Without Authentication |
+| **etcd** | `2379`, `2380` | Key-value store API probe via `/version` | Unauthenticated etcd Key-Value Store Access |
+| **HashiCorp Consul**| `8500` | HTTP GET `/v1/status/leader` cluster status probe | Unauthenticated HashiCorp Consul Agent API Access |
+| **LDAP** | `389`, `3890` | BER-encoded LDAPv3 simple anonymous bind request | LDAP Anonymous Directory Bind Authentication Permitted |
+| **SMTP** | `25`, `1025` | `HELO`, `MAIL FROM`, `RCPT TO` open relay probe | SMTP Insecure Open Mail Relay Submission Allowed |
+| **DNS** | `53`, `5354` | TCP CHAOS class `version.bind` query | Exposed DNS Nameserver Responding to CHAOS Version Queries |
+| **RabbitMQ** | `15672` | Management API `/api/whoami` with default creds (`guest:guest`) | RabbitMQ Default Administrative Credentials (guest:guest) |
+| **Grafana** | `3000` | Anonymous organization verification via `/api/org` | Grafana Anonymous Access Enabled |
+| **Jenkins** | `8080` | Unauthenticated dashboard and REST `/api/json` probe | Exposed Jenkins CI/CD Instance |
+| **Prometheus** | `9090` | Unauthenticated metrics and health probe via `/-/healthy` | Unauthenticated Prometheus Metrics API Exposed |
 
 ## Architecture
 
@@ -64,6 +87,11 @@ graph TD
         CSL["Consul Module<br>(Agent Status API)"]:::module
         MGO["MongoDB Module<br>(OP_MSG listDatabases)"]:::module
         SMB["SMB Module<br>(Negotiate Protocol Handshake)"]:::module
+        LDP["LDAP Module<br>(Anonymous Bind Request)"]:::module
+        SMP["SMTP Module<br>(Open Relay Probe)"]:::module
+        DNS["DNS Module<br>(CHAOS Version Query)"]:::module
+        TEL["Telnet Module<br>(Cleartext Login Probe)"]:::module
+        RMQ["RabbitMQ Module<br>(Default Admin Credentials)"]:::module
         WEB["App/Web Modules<br>(Grafana, Jenkins, Prometheus)"]:::module
     end
 
@@ -85,6 +113,11 @@ graph TD
     FP -->|Consul| CSL
     FP -->|MongoDB| MGO
     FP -->|SMB| SMB
+    FP -->|LDAP| LDP
+    FP -->|SMTP| SMP
+    FP -->|DNS| DNS
+    FP -->|Telnet| TEL
+    FP -->|RabbitMQ| RMQ
     FP -->|HTTP / Apps| WEB
 
     FTP -->|Auth Failed 530| SEC
@@ -93,6 +126,8 @@ graph TD
     RDS -->|+PONG| CNF
     MGO -->|Requires Auth| SEC
     MGO -->|Databases Listed| CNF
+    LDP -->|Bind Failed| SEC
+    LDP -->|Bind OK| CNF
 ```
 
 ## Installation
@@ -151,13 +186,31 @@ naabu -host target.com | vaasuki
 **Scan top 1000 ports and save confirmed findings to JSONL:**
 
 ```bash
-vaasuki -u target.com -tp 1000 -o findings.jsonl
+vaasuki -u target.com -tp 1000 -j -o findings.jsonl
 ```
 
 **Scan specific ports with custom rate limit:**
 
 ```bash
 vaasuki -u 10.0.0.5 -p 21,2121,6379,9200,11211 -r 500 -o results.jsonl
+```
+
+**Enforce strict scope policy with allow and deny rules:**
+
+```bash
+vaasuki -l targets.txt -sc scope.txt
+```
+
+*Example `scope.txt`:*
+
+```text
+# Allowed CIDRs and domains
+10.0.0.0/8
+*.example.com
+
+# Explicit exclusions
+!10.0.0.1
+!internal.example.com
 ```
 
 ## Testing Lab
@@ -171,8 +224,8 @@ cd lab
 docker compose up -d --build
 ```
 
-To run Vaasuki against the local testbed:
+To run Vaasuki against all lab endpoints:
 
 ```powershell
-vaasuki -u 127.0.0.1 -p 2121,2122,6379,6380,9200,11211,2375,2379,8500,27017,27018
+vaasuki -u 127.0.0.1 -p 1025,2121,2122,2323,2375,2379,3000,3890,4445,5354,6379,6380,8080,8500,9090,9200,11211,15672,27017,27018
 ```
