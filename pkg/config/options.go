@@ -28,18 +28,6 @@ type Options struct {
 
 // ParseOptions parses command-line flags and validates inputs.
 func ParseOptions() (*Options, error) {
-	// Normalize common short flags before parsing
-	for i, arg := range os.Args {
-		switch arg {
-		case "-tp":
-			os.Args[i] = "-top-ports"
-		case "-to":
-			os.Args[i] = "-timeout"
-		case "-nc", "--no-color":
-			os.Args[i] = "-b"
-		}
-	}
-
 	opts := &Options{}
 	flagSet := goflags.NewFlagSet()
 	flagSet.SetDescription("Vaasuki - Automated Service Discovery & Vulnerability Verification")

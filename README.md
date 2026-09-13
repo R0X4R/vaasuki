@@ -157,16 +157,16 @@ vaasuki -h
 | **`-u`** | `--target` | `""` | Single target host, IP, or CIDR block |
 | **`-l`** | `--list` | `""` | Path to file containing target hosts |
 | **`-p`** | `--ports` | `""` | Ports to scan (defaults to all `0-65535`, or e.g. `80,443`, `1-1000`) |
-| **`-tp`** | `--top-ports`| `""` | Top ports profile for Naabu (`100`, `1000`, `10000`) |
+| | `--top-ports`| `""` | Top ports profile for Naabu (`100`, `1000`, `10000`) |
 | **`-vf`** | `--verify` | `true` | Perform safe active authentication verification |
 | **`-sc`** | `--scope` | `""` | Path to scope authorization policy file |
 | **`-t`** | `--threads` | `25` | Number of concurrent worker goroutines |
-| **`-to`** | `--timeout` | `3` | Connection timeout in seconds |
+| | `--timeout` | `3` | Connection timeout in seconds |
 | **`-r`** | `--rate` | `1000` | Maximum connection attempts per second |
 | **`-o`** | `--output` | `""` | Output file path for findings |
 | **`-j`** | `--json` | `false` | Write output in JSONL format |
 | **`-s`** | `--silent` | `false` | Suppress banner and informational messages |
-| **`-b`**, **`-nc`**| `--color-blind`, `--no-color` | `false` | Disable ANSI terminal color codes |
+| **`-b`** | `--color-blind` | `false` | Disable ANSI terminal color codes |
 | **`-v`** | `--verbose` | `false` | Show verbose connection diagnostics |
 | | `--version` | `false` | Print tool version and exit |
 
