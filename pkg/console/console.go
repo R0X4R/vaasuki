@@ -112,5 +112,5 @@ func Banner(version string) {
 	}
 	outMu.Lock()
 	defer outMu.Unlock()
-	color.New(color.Bold, color.FgCyan).Println("Vaasuki - Network Service Reconnaissance and Active Verification Engine")
+	color.New(color.Bold, color.FgCyan).Println("Vaasuki - Automated Service Discovery & Vulnerability Verification")
 }

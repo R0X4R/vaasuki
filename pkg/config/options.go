@@ -29,13 +29,13 @@ type Options struct {
 func ParseOptions() (*Options, error) {
 	opts := &Options{}
 	flagSet := goflags.NewFlagSet()
-	flagSet.SetDescription("Vaasuki - High-Performance Network Service Reconnaissance & Verification Scanner")
+	flagSet.SetDescription("Vaasuki - Automated Service Discovery & Vulnerability Verification")
 
-	flagSet.CreateGroup("input", "Input Target Options",
+	flagSet.CreateGroup("input", "Input",
 		flagSet.StringVarP(&opts.Target, "target", "u", "", "\tSingle target host, IP, or CIDR block"),
 		flagSet.StringVarP(&opts.TargetsList, "list", "l", "", "\tFile containing list of targets"),
 		flagSet.StringVarP(&opts.Ports, "ports", "p", "", "\tPorts to scan (defaults to all 0-65535, or e.g. 21,22,80,6379, 1-1000)"),
-		flagSet.StringVarP(&opts.TopPorts, "top-ports", "tp", "", "\tTop ports to scan via naabu (100, 1000, 10000)"),
+		flagSet.StringVar(&opts.TopPorts, "top-ports", "", "\tTop ports to scan via naabu (100, 1000, 10000)"),
 	)
 
 	flagSet.CreateGroup("verification", "Verification & Safety",
@@ -45,7 +45,7 @@ func ParseOptions() (*Options, error) {
 
 	flagSet.CreateGroup("performance", "Performance & Optimization",
 		flagSet.IntVarP(&opts.Threads, "threads", "t", 25, "\tNumber of concurrent workers"),
-		flagSet.IntVarP(&opts.Timeout, "timeout", "to", 3, "\tConnection timeout in seconds"),
+		flagSet.IntVar(&opts.Timeout, "timeout", 3, "\tConnection timeout in seconds"),
 		flagSet.IntVarP(&opts.RateLimit, "rate", "r", 1000, "\tMaximum connection attempts per second"),
 	)
 
@@ -64,10 +64,10 @@ func ParseOptions() (*Options, error) {
 	if opts.TargetsList != "" {
 		stat, err := os.Stat(opts.TargetsList)
 		if err != nil {
-			return nil, fmt.Errorf("target list file not found: %w", err)
+			return nil, fmt.Errorf("Target list file not found: %w", err)
 		}
 		if stat.IsDir() {
-			return nil, fmt.Errorf("target list path is a directory: %s", opts.TargetsList)
+			return nil, fmt.Errorf("Target list path is a directory: %s", opts.TargetsList)
 		}
 	}
 
