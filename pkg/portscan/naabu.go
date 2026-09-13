@@ -15,10 +15,11 @@ func ScanWithNaabu(host string, portsStr string, topPorts string, rate int) ([]i
 	var discovered []int
 
 	options := runner.Options{
-		Host:     []string{host},
-		ScanType: runner.ConnectScan,
-		Rate:     rate,
-		Silent:   true,
+		Host:          []string{host},
+		ScanType:      runner.ConnectScan,
+		Rate:          rate,
+		Silent:        true,
+		DisableStdout: true,
 		OnResult: func(hr *result.HostResult) {
 			for _, port := range hr.Ports {
 				discovered = append(discovered, port.Port)

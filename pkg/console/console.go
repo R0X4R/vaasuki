@@ -38,6 +38,22 @@ func SetVerbose(v bool) {
 	verbose = v
 }
 
+// IsVerbose returns whether verbose mode is active.
+func IsVerbose() bool {
+	return verbose
+}
+
+// Verbosef prints a message only when verbose mode is enabled.
+func Verbosef(format string, args ...any) {
+	if !verbose || silent {
+		return
+	}
+	outMu.Lock()
+	defer outMu.Unlock()
+	tag := fmt.Sprintf("[%s]", color.BlueString("INF"))
+	fmt.Fprintf(outDest, "%s "+format+"\n", append([]any{tag}, args...)...)
+}
+
 // Infof prints an informational message with a blue [INF] prefix.
 func Infof(format string, args ...any) {
 	if silent {
