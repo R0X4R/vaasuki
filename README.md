@@ -13,8 +13,6 @@
   <a href="#testing-lab">Testing Lab</a>
 </p>
 
----
-
 ## Why I Built Vaasuki
 
 During my bug bounty hunting and security assessments, I noticed that almost everyone focuses heavily on web applications, while exposed infrastructure and non-HTTP network services receive very little attention.
@@ -25,8 +23,6 @@ These services are often the lowest-hanging fruit on an external perimeter, yet 
 
 Most scanners out there either stop at basic port discovery or flood you with speculative banner-based false positives. I wanted a tool that would do the actual legwork for me and confirm whether a service is genuinely exploitable. That is why I created **Vaasuki**. My goal is simple—turn overlooked, exposed services into verified bug bounty findings instead of just another list of open ports.
 
----
-
 ## What Makes It Different
 
 * **Real Active Verification** — Instead of guessing based on version banners, Vaasuki actively completes safe, non-destructive protocol handshakes to prove whether authentication is truly missing.
@@ -36,8 +32,6 @@ Most scanners out there either stop at basic port discovery or flood you with sp
 * **Concurrent Worker Pool** — Built with worker goroutines to check thousands of ports and endpoints concurrently.
 * **Strict Scope Boundaries** — Supports allow and deny CIDR lists with explicit exclusions so you stay strictly within your testing scope.
 * **Clean Terminal and JSONL Output** — Delivers highlighted status tags (`[CNF]`, `[HIT]`, `[INF]`, `[WRN]`, `[ERR]`) and writes structured JSONL files for easy reporting.
-
----
 
 ## Verified Services
 
@@ -61,7 +55,6 @@ Most scanners out there either stop at basic port discovery or flood you with sp
 | **Jenkins** | `8080` | Unauthenticated dashboard probe | Exposed Jenkins CI/CD Instance |
 | **Prometheus** | `9090` | Metrics and health query | Unauthenticated Prometheus Metrics API Exposed |
 
----
 
 ## How It Works
 
@@ -80,7 +73,6 @@ flowchart TD
     VER -->|Password Protected or Denied| SEC["Hardened Service<br>Filtered out with zero false positives"]:::safe
 ```
 
----
 
 ## Installation
 
@@ -96,7 +88,6 @@ cd vaasuki
 go build -o vaasuki main.go
 ```
 
----
 
 ## Usage
 
@@ -125,7 +116,6 @@ vaasuki -h
 | `--verbose` | **`-v`** | `false` | Show verbose connection diagnostics |
 | `--version` | | `false` | Print tool version and exit |
 
----
 
 ### Examples
 
