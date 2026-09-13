@@ -160,6 +160,7 @@ vaasuki -h
 | | `--top-ports`| `""` | Top ports profile for Naabu (`100`, `1000`, `10000`) |
 | `-vf` | `--verify` | `true` | Perform safe active authentication verification |
 | `-sc` | `--scope` | `""` | Path to scope authorization policy file |
+| | `--skip-host-discovery` | `false` | Skip pre-flight host discovery check |
 | `-t` | `--threads` | `25` | Number of concurrent worker goroutines |
 | | `--timeout` | `3` | Connection timeout in seconds |
 | `-r` | `--rate` | `1000` | Maximum connection attempts per second |
