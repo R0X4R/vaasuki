@@ -191,6 +191,16 @@ func run() error {
 			continue
 		}
 
+		// Host discovery pre-flight check
+		if !opts.SkipHostDiscovery {
+			alive, reason := target.CheckHostLiveness(ctx, host, time.Duration(opts.Timeout)*time.Second)
+			if !alive {
+				console.Errorf("Host discovery failed for %s: %s (skipping port scan)", host, reason)
+				continue
+			}
+			console.Verbosef("Host %s confirmed alive (%s)", host, reason)
+		}
+
 		var ports []int
 		trimmedPorts := strings.TrimSpace(opts.Ports)
 		if trimmedPorts != "" && trimmedPorts != "-" && trimmedPorts != "all" && trimmedPorts != "full" && opts.TopPorts == "" {
