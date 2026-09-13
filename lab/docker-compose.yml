@@ -1,0 +1,246 @@
+services:
+  # ============================================================================
+  # 1. FTP Services (Vulnerable vs Hardened)
+  # ============================================================================
+  ftp-vuln:
+    build:
+      context: ./ftp
+      dockerfile: Dockerfile
+      args:
+        CONF_FILE: vsftpd-anon.conf
+    container_name: vaasuki-ftp-vuln
+    ports:
+      - "2121:21"
+      - "21100-21105:21100-21105"
+    restart: unless-stopped
+
+  ftp-hardened:
+    build:
+      context: ./ftp
+      dockerfile: Dockerfile
+      args:
+        CONF_FILE: vsftpd-hardened.conf
+    container_name: vaasuki-ftp-hardened
+    ports:
+      - "2122:21"
+      - "21110-21115:21110-21115"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 2. Telnet Service
+  # ============================================================================
+  telnet-vuln:
+    build:
+      context: ./telnet
+      dockerfile: Dockerfile
+    container_name: vaasuki-telnet-vuln
+    ports:
+      - "2323:23"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 3. SMB / Samba Service (Guest Public Share)
+  # ============================================================================
+  smb-vuln:
+    build:
+      context: ./samba
+      dockerfile: Dockerfile
+    container_name: vaasuki-smb-vuln
+    ports:
+      - "4445:445"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 4. Redis Services (Unauthenticated vs Requirepass)
+  # ============================================================================
+  redis-vuln:
+    image: redis:7-alpine
+    container_name: vaasuki-redis-vuln
+    command: ["redis-server", "--protected-mode", "no"]
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  redis-hardened:
+    image: redis:7-alpine
+    container_name: vaasuki-redis-hardened
+    command: ["redis-server", "--requirepass", "labpassword123", "--protected-mode", "yes"]
+    ports:
+      - "6380:6379"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 5. MongoDB Services (Unauthenticated vs Auth Required)
+  # ============================================================================
+  mongo-vuln:
+    image: mongo:7.0
+    container_name: vaasuki-mongo-vuln
+    command: ["mongod", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    restart: unless-stopped
+
+  mongo-hardened:
+    image: mongo:7.0
+    container_name: vaasuki-mongo-hardened
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: secretpassword123
+    ports:
+      - "27018:27017"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 6. Elasticsearch (Unauthenticated single-node)
+  # ============================================================================
+  elasticsearch-vuln:
+    image: elasticsearch:7.17.18
+    container_name: vaasuki-elastic-vuln
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m
+    ports:
+      - "9200:9200"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 7. Memcached Service (Unauthenticated stats)
+  # ============================================================================
+  memcached-vuln:
+    image: memcached:alpine
+    container_name: vaasuki-memcached-vuln
+    ports:
+      - "11211:11211"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 8. Exposed Docker API Mock (Port 2375)
+  # ============================================================================
+  docker-api-vuln:
+    image: nginx:alpine
+    container_name: vaasuki-docker-api-vuln
+    volumes:
+      - ./docker-api/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "2375:2375"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 9. etcd Key-Value Store (Unauthenticated v3)
+  # ============================================================================
+  etcd-vuln:
+    image: bitnami/etcd:3.5.11
+    container_name: vaasuki-etcd-vuln
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_ADVERTISE_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+    ports:
+      - "2379:2379"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 10. HashiCorp Consul (Unauthenticated Dev Agent)
+  # ============================================================================
+  consul-vuln:
+    image: hashicorp/consul:1.18
+    container_name: vaasuki-consul-vuln
+    command: ["agent", "-dev", "-client=0.0.0.0"]
+    ports:
+      - "8500:8500"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 11. LDAP Directory Service (Anonymous Bind)
+  # ============================================================================
+  ldap-vuln:
+    image: rroemhild/test-openldap:latest
+    container_name: vaasuki-ldap-vuln
+    ports:
+      - "3890:10389"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 12. SMTP Mock Service (Mailpit - Safe Relay & STARTTLS Testing)
+  # ============================================================================
+  smtp-vuln:
+    image: axllent/mailpit:latest
+    container_name: vaasuki-smtp-vuln
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI
+    restart: unless-stopped
+
+  # ============================================================================
+  # 13. DNS Service (CoreDNS with CHAOS version & recursion)
+  # ============================================================================
+  dns-vuln:
+    image: coredns/coredns:latest
+    container_name: vaasuki-dns-vuln
+    command: ["-conf", "/etc/coredns/Corefile"]
+    volumes:
+      - ./coredns/Corefile:/etc/coredns/Corefile:ro
+    ports:
+      - "5353:53/udp"
+      - "5353:53/tcp"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 14. Message Broker (RabbitMQ Management)
+  # ============================================================================
+  rabbitmq-vuln:
+    image: rabbitmq:3.13-management-alpine
+    container_name: vaasuki-rabbitmq-vuln
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management Web UI
+    restart: unless-stopped
+
+  # ============================================================================
+  # 15. Monitoring & Metrics (Prometheus Unauthenticated)
+  # ============================================================================
+  prometheus-vuln:
+    image: prom/prometheus:latest
+    container_name: vaasuki-prom-vuln
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 16. Dashboard (Grafana - Anonymous Access Enabled)
+  # ============================================================================
+  grafana-vuln:
+    image: grafana/grafana:latest
+    container_name: vaasuki-grafana-vuln
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 17. CI/CD (Jenkins Mock / Service)
+  # ============================================================================
+  jenkins-vuln:
+    image: jenkins/jenkins:lts-alpine
+    container_name: vaasuki-jenkins-vuln
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  # ============================================================================
+  # 18. Generic Web Admin Portal
+  # ============================================================================
+  http-admin:
+    image: nginx:alpine
+    container_name: vaasuki-http-admin
+    ports:
+      - "8088:80"
+    restart: unless-stopped
