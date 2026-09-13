@@ -163,7 +163,7 @@ func run() error {
 
 		finding, _ := dispatcher.VerifyTarget(svc, ep.Host, ep.Port, timeout)
 		if finding != nil && finding.Confidence == model.Confirmed {
-			console.Confirmedf("[%s] %s:%d - %s", finding.Protocol, ep.Host, ep.Port, finding.Title)
+			console.Confirmedf("%s %s:%d - %s", console.ProtocolTag(finding.Protocol), ep.Host, ep.Port, finding.Title)
 			recordFinding(opts, finding)
 		}
 	}
@@ -214,7 +214,7 @@ func run() error {
 
 			finding, _ := dispatcher.VerifyTarget(svc, host, port, timeout)
 			if finding != nil && finding.Confidence == model.Confirmed {
-				console.Confirmedf("[%s] %s:%d - %s", finding.Protocol, host, port, finding.Title)
+				console.Confirmedf("%s %s:%d - %s", console.ProtocolTag(finding.Protocol), host, port, finding.Title)
 				recordFinding(opts, finding)
 			}
 		}
