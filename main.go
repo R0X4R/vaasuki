@@ -85,7 +85,7 @@ func run() error {
 			}
 		} else {
 			console.Infof("Running automated Naabu port discovery on: %s", host)
-			ports, err = portscan.ScanWithNaabu(host, "", opts.RateLimit)
+			ports, err = portscan.ScanWithNaabu(host, "", opts.TopPorts, opts.RateLimit)
 			if err != nil {
 				console.Warnf("Naabu port scan error (%s): %v, falling back to top ports", host, err)
 				ports = []int{21, 2121, 23, 2323, 80, 443, 4445, 6379, 6380, 8080, 8088, 9200, 11211}

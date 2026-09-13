@@ -11,7 +11,7 @@ import (
 )
 
 // ScanWithNaabu invokes Naabu programmatically to scan ports for the specified host.
-func ScanWithNaabu(host string, portsStr string, rate int) ([]int, error) {
+func ScanWithNaabu(host string, portsStr string, topPorts string, rate int) ([]int, error) {
 	var discovered []int
 
 	options := runner.Options{
@@ -28,8 +28,10 @@ func ScanWithNaabu(host string, portsStr string, rate int) ([]int, error) {
 
 	if portsStr != "" {
 		options.Ports = portsStr
+	} else if topPorts != "" {
+		options.TopPorts = topPorts
 	} else {
-		options.TopPorts = "100"
+		options.TopPorts = "1000"
 	}
 
 	naabuRunner, err := runner.NewRunner(&options)
