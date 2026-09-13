@@ -100,6 +100,11 @@ func Confirmedf(format string, args ...any) {
 	fmt.Fprintf(outDest, "%s "+format+"\n", append([]any{tag}, args...)...)
 }
 
+// ProtocolTag returns a protocol or service name inside uncolored brackets with cyan text.
+func ProtocolTag(proto string) string {
+	return fmt.Sprintf("[%s]", color.HiCyanString(proto))
+}
+
 // Banner prints the tool startup banner.
 func Banner(version string) {
 	if silent {
