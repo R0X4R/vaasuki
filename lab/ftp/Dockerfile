@@ -1,6 +1,6 @@
 FROM alpine:3.19
 
-RUN apk add --no-cache vsftpd shadow && \
+RUN apk add --no-cache vsftpd && \
     adduser -D -s /bin/sh ftpuser && \
     echo "ftpuser:securepassword123" | chpasswd && \
     mkdir -p /var/ftp/pub && \
