@@ -43,7 +43,7 @@ func ParseOptions() (*Options, error) {
 	flagSet.CreateGroup("verification", "Verification & Safety",
 		flagSet.BoolVarP(&opts.Verify, "verify", "vf", true, "\tPerform safe non-destructive authentication verification"),
 		flagSet.StringVarP(&opts.ScopeFile, "scope", "sc", "", "\tPath to scope authorization file"),
-		flagSet.BoolVar(&opts.SkipHostDiscovery, "skip-host-discovery", false, "\tSkip pre-flight host discovery check"),
+		flagSet.BoolVar(&opts.SkipHostDiscovery, "Pn", false, "\tTreat all hosts as online skip host discovery"),
 	)
 
 	flagSet.CreateGroup("performance", "Performance & Optimization",
