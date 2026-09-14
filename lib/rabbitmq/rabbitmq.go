@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/R0X4R/vaasuki/pkg/model"
+	"github.com/R0X4R/vaasuki/pkg/network"
 )
 
 // Verify tests whether RabbitMQ Management API is accessible with default credentials (guest:guest).
@@ -32,7 +33,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		if err != nil {
 			continue
 		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Vaasuki-Recon)")
+		network.ApplyCustomHeaders(req)
 		auth := base64.StdEncoding.EncodeToString([]byte("guest:guest"))
 		req.Header.Set("Authorization", "Basic "+auth)
 

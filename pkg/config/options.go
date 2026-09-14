@@ -25,6 +25,7 @@ type Options struct {
 	Verbose           bool
 	Version           bool
 	SkipHostDiscovery bool
+	Headers           goflags.StringSlice
 }
 
 // ParseOptions parses command-line flags and validates inputs.
@@ -44,6 +45,7 @@ func ParseOptions() (*Options, error) {
 		flagSet.BoolVarP(&opts.Verify, "verify", "vf", true, "\tPerform safe non-destructive authentication verification"),
 		flagSet.StringVarP(&opts.ScopeFile, "scope", "sc", "", "\tPath to scope authorization file"),
 		flagSet.BoolVar(&opts.SkipHostDiscovery, "Pn", false, "\tTreat all hosts as online skip host discovery"),
+		flagSet.StringSliceVarP(&opts.Headers, "header", "H", nil, "\tCustom header to include in HTTP requests (e.g. -H 'Header: Value')", goflags.StringSliceOptions),
 	)
 
 	flagSet.CreateGroup("performance", "Performance & Optimization",

@@ -49,6 +49,10 @@ func run() error {
 		return err
 	}
 
+	if len(opts.Headers) > 0 {
+		network.SetCustomHeaders(opts.Headers)
+	}
+
 	if opts.Version {
 		console.Version(Version)
 		return nil
