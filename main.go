@@ -23,7 +23,7 @@ import (
 	"github.com/R0X4R/vaasuki/pkg/target"
 )
 
-const Version = "2.0.0"
+const Version = "2.5.0"
 
 func main() {
 	if err := run(); err != nil {
@@ -47,6 +47,10 @@ func run() error {
 	opts, err := config.ParseOptions()
 	if err != nil {
 		return err
+	}
+
+	if len(opts.Headers) > 0 {
+		network.SetCustomHeaders(opts.Headers)
 	}
 
 	if opts.Version {

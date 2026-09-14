@@ -9,12 +9,16 @@ import (
 	"time"
 
 	"github.com/R0X4R/vaasuki/pkg/model"
+	"github.com/R0X4R/vaasuki/pkg/network"
 )
 
 // Verify tests whether an unauthenticated Prometheus metrics server is exposed.
 func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {
 	client := &http.Client{
 		Timeout: timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
@@ -27,7 +31,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		if err != nil {
 			continue
 		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Vaasuki-Recon)")
+		network.ApplyCustomHeaders(req)
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -36,7 +40,12 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		resp.Body.Close()
 
-		if resp.StatusCode == http.StatusOK && strings.Contains(string(body), "Prometheus") {
+		bodyStr := strings.TrimSpace(string(body))
+		isHealthy := strings.Contains(bodyStr, "Prometheus Server is Healthy.") ||
+			strings.Contains(bodyStr, "Prometheus is Healthy.") ||
+			strings.HasPrefix(bodyStr, "Prometheus Server is Healthy")
+
+		if resp.StatusCode == http.StatusOK && isHealthy {
 			return &model.Finding{
 				Target:     host,
 				Port:       port,
@@ -50,7 +59,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 					Method:    "none",
 					Status:    "successful",
 				},
-				Evidence:  []string{fmt.Sprintf("HTTP 200: %s", strings.TrimSpace(string(body)))},
+				Evidence:  []string{fmt.Sprintf("HTTP 200 OK: %s", bodyStr)},
 				Timestamp: time.Now().UTC(),
 			}, nil
 		}

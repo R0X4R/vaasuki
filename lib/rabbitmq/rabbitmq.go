@@ -3,6 +3,7 @@ package rabbitmq
 import (
 	"crypto/tls"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,12 +11,16 @@ import (
 	"time"
 
 	"github.com/R0X4R/vaasuki/pkg/model"
+	"github.com/R0X4R/vaasuki/pkg/network"
 )
 
 // Verify tests whether RabbitMQ Management API is accessible with default credentials (guest:guest).
 func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {
 	client := &http.Client{
 		Timeout: timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
@@ -28,7 +33,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		if err != nil {
 			continue
 		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Vaasuki-Recon)")
+		network.ApplyCustomHeaders(req)
 		auth := base64.StdEncoding.EncodeToString([]byte("guest:guest"))
 		req.Header.Set("Authorization", "Basic "+auth)
 
@@ -39,7 +44,41 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		resp.Body.Close()
 
-		if resp.StatusCode == http.StatusOK && strings.Contains(string(body), "administrator") {
+		cType := strings.ToLower(resp.Header.Get("Content-Type"))
+		if resp.StatusCode != http.StatusOK || !strings.Contains(cType, "application/json") {
+			continue
+		}
+
+		var whoami struct {
+			Name string `json:"name"`
+			Tags any    `json:"tags"`
+		}
+		if err := json.Unmarshal(body, &whoami); err != nil {
+			continue
+		}
+		if whoami.Name != "guest" {
+			continue
+		}
+
+		hasAdminTag := false
+		switch tags := whoami.Tags.(type) {
+		case []any:
+			for _, t := range tags {
+				if str, ok := t.(string); ok && str == "administrator" {
+					hasAdminTag = true
+					break
+				}
+			}
+		case string:
+			for _, str := range strings.Split(tags, ",") {
+				if strings.TrimSpace(str) == "administrator" {
+					hasAdminTag = true
+					break
+				}
+			}
+		}
+
+		if hasAdminTag {
 			return &model.Finding{
 				Target:     host,
 				Port:       port,
@@ -53,7 +92,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 					Method:    "basic",
 					Status:    "successful",
 				},
-				Evidence:  []string{fmt.Sprintf("HTTP 200 OK: %s", strings.TrimSpace(string(body)))},
+				Evidence:  []string{fmt.Sprintf("HTTP 200 OK (application/json): %s", strings.TrimSpace(string(body)))},
 				Timestamp: time.Now().UTC(),
 			}, nil
 		}
@@ -61,3 +100,4 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 
 	return nil, nil
 }
+

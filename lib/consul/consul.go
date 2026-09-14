@@ -2,19 +2,25 @@ package consul
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/R0X4R/vaasuki/pkg/model"
+	"github.com/R0X4R/vaasuki/pkg/network"
 )
 
 // Verify tests whether an exposed unauthenticated Consul agent API is accessible.
 func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {
 	client := &http.Client{
 		Timeout: timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
@@ -27,7 +33,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		if err != nil {
 			continue
 		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Vaasuki-Recon)")
+		network.ApplyCustomHeaders(req)
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -36,28 +42,40 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		resp.Body.Close()
 
-		if resp.StatusCode == http.StatusOK {
-			bodyStr := strings.TrimSpace(string(body))
-			// Consul /v1/status/leader returns e.g. "127.0.0.1:8300"
-			if strings.HasPrefix(bodyStr, "\"") && strings.HasSuffix(bodyStr, "\"") && strings.Contains(bodyStr, ":") && !strings.Contains(bodyStr, "MongoDB") {
-				return &model.Finding{
-					Target:     host,
-					Port:       port,
-					Protocol:   scheme,
-					Service:    "consul",
-					Title:      fmt.Sprintf("Unauthenticated HashiCorp Consul Agent API Access (Leader: %s)", bodyStr),
-					Severity:   "high",
-					Confidence: model.Confirmed,
-					Auth: model.AuthResult{
-						Attempted: true,
-						Method:    "none",
-						Status:    "successful",
-					},
-					Evidence:  []string{fmt.Sprintf("HTTP 200 OK: %s", bodyStr)},
-					Timestamp: time.Now().UTC(),
-				}, nil
-			}
+		cType := strings.ToLower(resp.Header.Get("Content-Type"))
+		if resp.StatusCode != http.StatusOK || !strings.Contains(cType, "application/json") {
+			continue
 		}
+
+		var leader string
+		if err := json.Unmarshal(body, &leader); err != nil {
+			continue
+		}
+
+		leader = strings.TrimSpace(leader)
+		if leader == "" {
+			continue
+		}
+		if _, _, err := net.SplitHostPort(leader); err != nil {
+			continue
+		}
+
+		return &model.Finding{
+			Target:     host,
+			Port:       port,
+			Protocol:   scheme,
+			Service:    "consul",
+			Title:      fmt.Sprintf("Unauthenticated HashiCorp Consul Agent API Access (Leader: \"%s\")", leader),
+			Severity:   "high",
+			Confidence: model.Confirmed,
+			Auth: model.AuthResult{
+				Attempted: true,
+				Method:    "none",
+				Status:    "successful",
+			},
+			Evidence:  []string{fmt.Sprintf("HTTP 200 OK (application/json): \"%s\"", leader)},
+			Timestamp: time.Now().UTC(),
+		}, nil
 	}
 
 	return nil, nil

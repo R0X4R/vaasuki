@@ -9,12 +9,16 @@ import (
 	"time"
 
 	"github.com/R0X4R/vaasuki/pkg/model"
+	"github.com/R0X4R/vaasuki/pkg/network"
 )
 
 // Verify tests whether an unauthenticated Jenkins CI/CD instance is exposed.
 func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {
 	client := &http.Client{
 		Timeout: timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
@@ -27,7 +31,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		if err != nil {
 			continue
 		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Vaasuki-Recon)")
+		network.ApplyCustomHeaders(req)
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -37,7 +41,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 			if errRoot != nil {
 				continue
 			}
-			reqRoot.Header.Set("User-Agent", "Mozilla/5.0 (Vaasuki-Recon)")
+			network.ApplyCustomHeaders(reqRoot)
 			respRoot, errRoot := client.Do(reqRoot)
 			if errRoot != nil {
 				continue
@@ -46,10 +50,23 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		}
 
 		jenkinsHeader := resp.Header.Get("X-Jenkins")
+		if jenkinsHeader == "" {
+			jenkinsHeader = resp.Header.Get("X-Hudson")
+		}
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		resp.Body.Close()
 
-		if jenkinsHeader != "" || strings.Contains(string(body), "Jenkins") {
+		bodyStr := string(body)
+		isJenkins := false
+		if jenkinsHeader != "" {
+			isJenkins = true
+		} else if strings.Contains(bodyStr, "hudson.model.Hudson") || strings.Contains(bodyStr, "jenkins.model.Jenkins") {
+			isJenkins = true
+		} else if strings.Contains(bodyStr, "<title>Dashboard [Jenkins]</title>") || strings.Contains(bodyStr, "name=\"j_username\"") || strings.Contains(bodyStr, "class=\"jenkins-") {
+			isJenkins = true
+		}
+
+		if isJenkins {
 			ver := jenkinsHeader
 			if ver == "" {
 				ver = "unknown"
