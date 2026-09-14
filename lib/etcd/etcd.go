@@ -17,6 +17,9 @@ import (
 func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {
 	client := &http.Client{
 		Timeout: timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
@@ -38,35 +41,38 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		resp.Body.Close()
 
-		if resp.StatusCode == http.StatusOK {
-			bodyStr := string(body)
-			if strings.Contains(bodyStr, "etcdserver") || strings.Contains(bodyStr, "etcdcluster") {
-				var data map[string]any
-				_ = json.Unmarshal(body, &data)
-
-				etcdVer := "unknown"
-				if ev, ok := data["etcdserver"].(string); ok {
-					etcdVer = ev
-				}
-
-				return &model.Finding{
-					Target:     host,
-					Port:       port,
-					Protocol:   scheme,
-					Service:    "etcd",
-					Title:      fmt.Sprintf("Unauthenticated etcd Key-Value Store Access (v%s)", etcdVer),
-					Severity:   "critical",
-					Confidence: model.Confirmed,
-					Auth: model.AuthResult{
-						Attempted: true,
-						Method:    "none",
-						Status:    "successful",
-					},
-					Evidence:  []string{fmt.Sprintf("HTTP 200 OK: %s", bodyStr[:min(len(bodyStr), 200)])},
-					Timestamp: time.Now().UTC(),
-				}, nil
-			}
+		cType := strings.ToLower(resp.Header.Get("Content-Type"))
+		if resp.StatusCode != http.StatusOK || !strings.Contains(cType, "application/json") {
+			continue
 		}
+
+		var data map[string]any
+		if err := json.Unmarshal(body, &data); err != nil {
+			continue
+		}
+
+		etcdVer, ok := data["etcdserver"].(string)
+		if !ok || etcdVer == "" {
+			continue
+		}
+
+		bodyStr := string(body)
+		return &model.Finding{
+			Target:     host,
+			Port:       port,
+			Protocol:   scheme,
+			Service:    "etcd",
+			Title:      fmt.Sprintf("Unauthenticated etcd Key-Value Store Access (v%s)", etcdVer),
+			Severity:   "critical",
+			Confidence: model.Confirmed,
+			Auth: model.AuthResult{
+				Attempted: true,
+				Method:    "none",
+				Status:    "successful",
+			},
+			Evidence:  []string{fmt.Sprintf("HTTP 200 OK (application/json): %s", bodyStr[:min(len(bodyStr), 200)])},
+			Timestamp: time.Now().UTC(),
+		}, nil
 	}
 
 	return nil, nil

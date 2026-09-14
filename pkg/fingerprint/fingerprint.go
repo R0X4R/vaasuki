@@ -188,6 +188,9 @@ func probeMemcached(host string, port int, timeout time.Duration) Service {
 func probeHTTP(host string, port int, timeout time.Duration) Service {
 	client := &http.Client{
 		Timeout: timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			DialContext: (&net.Dialer{

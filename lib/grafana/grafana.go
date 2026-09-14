@@ -17,6 +17,9 @@ import (
 func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {
 	client := &http.Client{
 		Timeout: timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
@@ -39,34 +42,39 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		resp.Body.Close()
 
-		if resp.StatusCode == http.StatusOK {
+		cType := strings.ToLower(resp.Header.Get("Content-Type"))
+		if resp.StatusCode == http.StatusOK && strings.Contains(cType, "application/json") {
 			var data map[string]any
 			if err := json.Unmarshal(body, &data); err == nil {
-				role := "Viewer"
-				if r, ok := data["role"].(string); ok {
-					role = r
-				}
-				orgName := "Default"
-				if n, ok := data["name"].(string); ok {
-					orgName = n
-				}
+				_, hasID := data["id"]
+				_, hasName := data["name"]
+				if hasID || hasName {
+					role := "Viewer"
+					if r, ok := data["role"].(string); ok {
+						role = r
+					}
+					orgName := "Default"
+					if n, ok := data["name"].(string); ok {
+						orgName = n
+					}
 
-				return &model.Finding{
-					Target:     host,
-					Port:       port,
-					Protocol:   scheme,
-					Service:    "grafana",
-					Title:      fmt.Sprintf("Grafana Anonymous Access Enabled (Org: %s, Role: %s)", orgName, role),
-					Severity:   "high",
-					Confidence: model.Confirmed,
-					Auth: model.AuthResult{
-						Attempted: true,
-						Method:    "anonymous",
-						Status:    "successful",
-					},
-					Evidence:  []string{fmt.Sprintf("HTTP 200 OK: %s", string(body))},
-					Timestamp: time.Now().UTC(),
-				}, nil
+					return &model.Finding{
+						Target:     host,
+						Port:       port,
+						Protocol:   scheme,
+						Service:    "grafana",
+						Title:      fmt.Sprintf("Grafana Anonymous Access Enabled (Org: %s, Role: %s)", orgName, role),
+						Severity:   "high",
+						Confidence: model.Confirmed,
+						Auth: model.AuthResult{
+							Attempted: true,
+							Method:    "anonymous",
+							Status:    "successful",
+						},
+						Evidence:  []string{fmt.Sprintf("HTTP 200 OK (application/json): %s", string(body))},
+						Timestamp: time.Now().UTC(),
+					}, nil
+				}
 			}
 		}
 
@@ -84,23 +92,29 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		healthBody, _ := io.ReadAll(io.LimitReader(respHealth.Body, 2048))
 		respHealth.Body.Close()
 
-		if respHealth.StatusCode == http.StatusOK && strings.Contains(string(healthBody), "database") {
-			return &model.Finding{
-				Target:     host,
-				Port:       port,
-				Protocol:   scheme,
-				Service:    "grafana",
-				Title:      "Exposed Grafana Dashboard Health API",
-				Severity:   "medium",
-				Confidence: model.Confirmed,
-				Auth: model.AuthResult{
-					Attempted: true,
-					Method:    "none",
-					Status:    "successful",
-				},
-				Evidence:  []string{fmt.Sprintf("HTTP 200 OK: %s", string(healthBody))},
-				Timestamp: time.Now().UTC(),
-			}, nil
+		healthCType := strings.ToLower(respHealth.Header.Get("Content-Type"))
+		if respHealth.StatusCode == http.StatusOK && strings.Contains(healthCType, "application/json") {
+			var healthData map[string]any
+			if err := json.Unmarshal(healthBody, &healthData); err == nil {
+				if db, ok := healthData["database"].(string); ok && (db == "ok" || strings.EqualFold(db, "ok")) {
+					return &model.Finding{
+						Target:     host,
+						Port:       port,
+						Protocol:   scheme,
+						Service:    "grafana",
+						Title:      "Exposed Grafana Dashboard Health API",
+						Severity:   "medium",
+						Confidence: model.Confirmed,
+						Auth: model.AuthResult{
+							Attempted: true,
+							Method:    "none",
+							Status:    "successful",
+						},
+						Evidence:  []string{fmt.Sprintf("HTTP 200 OK (application/json): %s", string(healthBody))},
+						Timestamp: time.Now().UTC(),
+					}, nil
+				}
+			}
 		}
 	}
 
