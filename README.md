@@ -70,7 +70,7 @@ flowchart TD
     SC --> FP["Protocol Fingerprinting<br>(Live wire handshakes and service detection)"]:::step
     FP --> VER["Active Verification Engine<br>(Safe authentication tests)"]:::engine
 
-    VER -->|Open or Unauthenticated| CNF["[CNF] Verified Vulnerability<br>Confirmed exploitability ready for reporting"]:::finding
+    VER -->|Open or Unauthenticated| CNF[" Verified Vulnerability<br>Confirmed exploitability ready for reporting"]:::finding
     VER -->|Password Protected or Denied| SEC["Hardened Service<br>Filtered out with zero false positives"]:::safe
 ```
 
@@ -173,8 +173,6 @@ vaasuki -l targets.txt -sc scope.txt
 !internal.example.com
 ```
 
----
-
 ## Testing Lab
 
 Vaasuki includes a multi-container Docker Compose testbed under `lab/` that provisions both vulnerable and hardened instances of all supported services.
@@ -191,8 +189,6 @@ To run Vaasuki against all lab endpoints
 ```powershell
 vaasuki -u 127.0.0.1 -p 1025,2121,2122,2323,2375,2379,3000,3890,4445,5354,6379,6380,8080,8500,9090,9200,11211,15672,27017,27018
 ```
-
----
 
 ## Credits & Acknowledgements
 
