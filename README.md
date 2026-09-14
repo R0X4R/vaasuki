@@ -104,6 +104,7 @@ vaasuki -h
 | `--verify` | **`-vf`** | `true` | Perform safe active authentication verification |
 | `--scope` | **`-sc`** | `""` | Path to scope authorization policy file |
 | **`-Pn`** | | `false` | Treat all hosts as online and skip pre-flight host discovery |
+| `--header` | **`-H`** | `""` | Custom HTTP headers to include in requests (e.g. `-H 'User-Agent: bot'`) |
 | `--threads` | **`-t`** | `25` | Number of concurrent worker goroutines |
 | `--timeout` | | `3` | Connection timeout in seconds |
 | `--rate` | **`-r`** | `1000` | Maximum connection attempts per second |
@@ -145,6 +146,12 @@ vaasuki -u 10.0.0.5 -p 21,2121,2375,6379,9200,11211 -t 50 -r 2000 -o results.jso
 
 ```bash
 vaasuki -u 10.0.0.5 -Pn
+```
+
+**Include custom HTTP headers in requests**
+
+```bash
+vaasuki -u target.com -H "User-Agent: BugBountyBot/1.0" -H "X-Bug-Bounty: hacker1"
 ```
 
 **Enforce strict scope policy with allow and deny rules**

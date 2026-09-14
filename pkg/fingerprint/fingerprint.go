@@ -202,7 +202,7 @@ func probeHTTP(host string, port int, timeout time.Duration) Service {
 		if err != nil {
 			continue
 		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Vaasuki-Recon)")
+		network.ApplyCustomHeaders(req)
 
 		resp, err := client.Do(req)
 		if err != nil {
