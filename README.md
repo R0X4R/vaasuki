@@ -10,7 +10,8 @@
   <a href="#how-it-works">How It Works</a> •
   <a href="#installation">Installation</a> •
   <a href="#usage">Usage</a> •
-  <a href="#testing-lab">Testing Lab</a>
+  <a href="#testing-lab">Testing Lab</a> •
+  <a href="#credits--acknowledgements">Credits</a>
 </p>
 
 ## Why I Built Vaasuki
@@ -27,7 +28,7 @@ Most scanners out there either stop at basic port discovery or flood you with sp
 
 * **Real Active Verification** - Instead of guessing based on version banners, Vaasuki actively completes safe, non-destructive protocol handshakes to prove whether authentication is truly missing.
 * **Protocol-First Fingerprinting** - Even when services run on unusual or non-standard ports, Vaasuki speaks their native wire protocols to identify them dynamically.
-* **Pipeline-Ready** - You can pipe results directly from tools like Naabu or Masscan (`naabu -host target.com | vaasuki`) so you skip port scanning entirely and jump straight to verification.
+* **Pipeline-Ready & Embedded Naabu Integration** - When scanning an IP or domain target where open ports are unknown, Vaasuki leverages embedded **Naabu** to perform fast SYN/connect port discovery. When piping from existing recon pipelines (`naabu -host target.com | vaasuki`), Vaasuki skips port scanning completely and begins active protocol verification immediately.
 * **Fast Pre-Flight Host Discovery** - It quickly weeds out dead IPs or unresolvable domains before starting scans, saving you time. You can also pass `-Pn` to treat all targets as online.
 * **Concurrent Worker Pool** - Built with worker goroutines to check thousands of ports and endpoints concurrently.
 * **Strict Scope Boundaries** - Supports allow and deny CIDR lists with explicit exclusions so you stay strictly within your testing scope.
@@ -190,3 +191,14 @@ To run Vaasuki against all lab endpoints
 ```powershell
 vaasuki -u 127.0.0.1 -p 1025,2121,2122,2323,2375,2379,3000,3890,4445,5354,6379,6380,8080,8500,9090,9200,11211,15672,27017,27018
 ```
+
+---
+
+## Credits & Acknowledgements
+
+Vaasuki stands on the shoulders of these open-source tools and libraries:
+
+* **[ProjectDiscovery Naabu](https://github.com/projectdiscovery/naabu)** - High-speed, SYN/connect port discovery engine utilized when scanning raw hostnames or IP addresses to discover listening ports prior to verification.
+* **[ProjectDiscovery goflags](https://github.com/projectdiscovery/goflags)** - Elegant and flexible CLI flag parsing framework powering Vaasuki's configuration, grouped options, and custom headers.
+* **[Fatih Arslan's color (`fatih/color`)](https://github.com/fatih/color)** - Colorized terminal output and ANSI formatting for clear, high-contrast security reporting.
+
