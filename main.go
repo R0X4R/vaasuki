@@ -329,7 +329,23 @@ func (sc *scanCoordinator) verifyEndpoint(ctx context.Context, ep target.Target)
 	finding, _ := dispatcher.VerifyTarget(svc, ep.Host, ep.Port, sc.timeout)
 	if finding != nil && finding.Confidence == model.Confirmed {
 		atomic.AddInt64(&sc.confirmedCount, 1)
-		console.Confirmedf("%s %s:%d - %s", console.ProtocolTag(finding.Protocol), ep.Host, ep.Port, finding.Title)
+
+		targetURL := fmt.Sprintf("%s:%d", ep.Host, ep.Port)
+		protoLower := strings.ToLower(finding.Protocol)
+		if protoLower == "http" || protoLower == "https" {
+			if (protoLower == "http" && ep.Port == 80) || (protoLower == "https" && ep.Port == 443) {
+				targetURL = fmt.Sprintf("%s://%s", protoLower, ep.Host)
+			} else {
+				targetURL = fmt.Sprintf("%s://%s:%d", protoLower, ep.Host, ep.Port)
+			}
+		}
+
+		serviceName := finding.Service
+		if serviceName == "" {
+			serviceName = finding.Protocol
+		}
+
+		console.Findingf(finding.Severity, serviceName, targetURL, finding.Title)
 		sc.recordFinding(finding)
 	}
 }

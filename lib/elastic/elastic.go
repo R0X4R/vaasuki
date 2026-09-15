@@ -51,11 +51,28 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 			continue
 		}
 
-		clusterName, hasCluster := data["cluster_name"].(string)
-		_, hasVersion := data["version"]
+		clusterName, _ := data["cluster_name"].(string)
+		clusterName = strings.TrimSpace(clusterName)
 		tagline, _ := data["tagline"].(string)
+		tagline = strings.TrimSpace(tagline)
 
-		if !hasCluster && !hasVersion && !strings.Contains(tagline, "You Know, for Search") {
+		// Elasticsearch and OpenSearch root responses always provide a recognized tagline
+		// ("You Know, for Search" or "OpenSearch"), or a valid cluster_name paired with a version map or cluster_uuid.
+		isElastic := false
+		if strings.Contains(tagline, "You Know, for Search") || strings.Contains(tagline, "OpenSearch") {
+			isElastic = true
+		} else if clusterName != "" {
+			if verMap, ok := data["version"].(map[string]any); ok {
+				if _, hasNum := verMap["number"]; hasNum {
+					isElastic = true
+				}
+			}
+			if uuid, hasUUID := data["cluster_uuid"].(string); hasUUID && strings.TrimSpace(uuid) != "" {
+				isElastic = true
+			}
+		}
+
+		if !isElastic {
 			continue
 		}
 

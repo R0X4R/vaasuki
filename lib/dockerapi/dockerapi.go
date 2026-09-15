@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/R0X4R/vaasuki/pkg/model"
@@ -50,14 +51,14 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		}
 
 		apiVersion, hasAPI := data["ApiVersion"].(string)
+		apiVersion = strings.TrimSpace(apiVersion)
 		_, hasComponents := data["Components"]
 		_, hasPlatform := data["Platform"]
-		if !hasAPI && !hasComponents && !hasPlatform {
-			continue
-		}
+		_, hasMinAPI := data["MinAPIVersion"]
+		lowerBody := strings.ToLower(string(body))
 
-		if !hasAPI || apiVersion == "" {
-			apiVersion = "unknown"
+		if !hasAPI || apiVersion == "" || (!hasComponents && !hasPlatform && !hasMinAPI && !strings.Contains(lowerBody, "docker")) {
+			continue
 		}
 
 		bodyStr := string(body)

@@ -62,7 +62,10 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 			isJenkins = true
 		} else if strings.Contains(bodyStr, "hudson.model.Hudson") || strings.Contains(bodyStr, "jenkins.model.Jenkins") {
 			isJenkins = true
-		} else if strings.Contains(bodyStr, "<title>Dashboard [Jenkins]</title>") || strings.Contains(bodyStr, "name=\"j_username\"") || strings.Contains(bodyStr, "class=\"jenkins-") {
+		} else if strings.Contains(bodyStr, "<title>Dashboard [Jenkins]</title>") ||
+			strings.Contains(bodyStr, "<title>Sign in [Jenkins]</title>") ||
+			strings.Contains(bodyStr, "class=\"jenkins-") ||
+			(strings.Contains(bodyStr, "name=\"j_username\"") && (strings.Contains(strings.ToLower(bodyStr), "jenkins") || strings.Contains(strings.ToLower(bodyStr), "hudson"))) {
 			isJenkins = true
 		}
 
