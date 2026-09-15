@@ -11,7 +11,7 @@ Scanning networks, hosts, or systems without prior explicit authorization from t
 We take the security and integrity of Vaasuki seriously. If you discover a security vulnerability or critical bug within Vaasuki itself:
 
 1. **Do not create a public GitHub issue.**
-2. Please privately report the issue via GitHub's [Security Advisories](https://github.com/R0X4R/vaasuki/security/advisories) feature, or send an email to the project maintainer at `[EMAIL_ADDRESS]`.
+2. Please privately report the issue via GitHub's [Security Advisories](https://github.com/R0X4R/vaasuki/security/advisories) feature, or send an email to the project maintainer at `r0x4r@yahoo.com`.
 3. Include detailed reproduction steps, proof of concept (if applicable), and affected versions.
 
 ### What to Expect
