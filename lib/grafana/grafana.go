@@ -46,9 +46,12 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		if resp.StatusCode == http.StatusOK && strings.Contains(cType, "application/json") {
 			var data map[string]any
 			if err := json.Unmarshal(body, &data); err == nil {
-				_, hasID := data["id"]
-				_, hasName := data["name"]
-				if hasID || hasName {
+				hasID := data["id"] != nil
+				_, hasName := data["name"].(string)
+				_, hasAddress := data["address"]
+				hasGrafanaCookie := strings.Contains(strings.ToLower(resp.Header.Get("Set-Cookie")), "grafana")
+
+				if (hasID && hasName && hasAddress) || (hasID && hasName && hasGrafanaCookie) {
 					role := "Viewer"
 					if r, ok := data["role"].(string); ok {
 						role = r
@@ -96,7 +99,10 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		if respHealth.StatusCode == http.StatusOK && strings.Contains(healthCType, "application/json") {
 			var healthData map[string]any
 			if err := json.Unmarshal(healthBody, &healthData); err == nil {
-				if db, ok := healthData["database"].(string); ok && (db == "ok" || strings.EqualFold(db, "ok")) {
+				db, ok := healthData["database"].(string)
+				hasCommit := healthData["commit"] != nil
+				hasVersion := healthData["version"] != nil
+				if ok && (db == "ok" || strings.EqualFold(db, "ok")) && (hasCommit || hasVersion) {
 					return &model.Finding{
 						Target:     host,
 						Port:       port,
