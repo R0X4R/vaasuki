@@ -37,8 +37,54 @@ var smbNegotiatePayload = []byte{
 	0x02, 0x4e, 0x54, 0x20, 0x4c, 0x4d, 0x20, 0x30, 0x2e, 0x31, 0x32, 0x00, // NT LM 0.12
 }
 
+// smb2NegotiatePayload sends SMB2/SMB3 dialect negotiations (dialects 0x0202, 0x0210, 0x0300, 0x0311).
+var smb2NegotiatePayload = []byte{
+	// NetBIOS Session Service Header (Length: 0x6c = 108 bytes)
+	0x00, 0x00, 0x00, 0x6c,
+	// SMB2 Header (64 bytes)
+	0xfe, 0x53, 0x4d, 0x42, // ProtocolId: "\xfeSMB"
+	0x40, 0x00,             // StructureSize (64)
+	0x00, 0x00,             // CreditCharge (0)
+	0x00, 0x00, 0x00, 0x00, // Status (0)
+	0x00, 0x00,             // Command: NEGOTIATE (0x0000)
+	0x00, 0x00,             // CreditsRequested (0)
+	0x00, 0x00, 0x00, 0x00, // Flags (0)
+	0x00, 0x00, 0x00, 0x00, // NextCommand (0)
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // MessageId (0)
+	0x00, 0x00, 0x00, 0x00, // ProcessId (0)
+	0x00, 0x00, 0x00, 0x00, // TreeId (0)
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // SessionId (0)
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Signature (16 zeros)
+	// SMB2 Negotiate Request Body (36 bytes)
+	0x24, 0x00, // StructureSize (36)
+	0x04, 0x00, // DialectCount (4)
+	0x01, 0x00, // SecurityMode (Signing enabled)
+	0x00, 0x00, // Reserved (0)
+	0x00, 0x00, 0x00, 0x00, // Capabilities (0)
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ClientGuid (16 zeros)
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ClientStartTime (0)
+	// Dialects (4 * 2 = 8 bytes)
+	0x02, 0x02, // SMB 2.0.2
+	0x10, 0x02, // SMB 2.1
+	0x00, 0x03, // SMB 3.0
+	0x11, 0x03, // SMB 3.1.1
+}
+
 // Verify tests whether an SMB / Samba service is active and responsive to dialect negotiation.
 func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {
+	// Try SMB1 negotiate first
+	finding, err := probeDialect(host, port, timeout, smbNegotiatePayload)
+	if err == nil && finding != nil {
+		return finding, nil
+	}
+
+	// Fallback to SMB2/SMB3 negotiate (for modern Windows Server / Win10/11 where SMB1 is disabled)
+	return probeDialect(host, port, timeout, smb2NegotiatePayload)
+}
+
+func probeDialect(host string, port int, timeout time.Duration, payload []byte) (*model.Finding, error) {
 	conn, err := network.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
 	if err != nil {
 		return nil, err
@@ -47,7 +93,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 
 	_ = conn.SetDeadline(time.Now().Add(timeout))
 
-	if _, err := conn.Write(smbNegotiatePayload); err != nil {
+	if _, err := conn.Write(payload); err != nil {
 		return nil, err
 	}
 

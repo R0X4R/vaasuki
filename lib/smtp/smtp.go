@@ -10,6 +10,33 @@ import (
 	"github.com/R0X4R/vaasuki/pkg/network"
 )
 
+// readSMTPReply reads an RFC 5321 compliant response, correctly consuming multi-line replies.
+func readSMTPReply(reader *bufio.Reader) (string, []string, error) {
+	var lines []string
+	var code string
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return code, lines, err
+		}
+		trimmed := strings.TrimRight(line, "\r\n")
+		lines = append(lines, trimmed)
+
+		if len(trimmed) >= 3 {
+			c := trimmed[:3]
+			if code == "" {
+				code = c
+			}
+			// RFC 5321: Continuation lines have '-' as 4th char (e.g. "250-").
+			// Terminating line has a space ' ' as 4th char (e.g. "250 ") or ends right after 3 digits.
+			if len(trimmed) == 3 || (len(trimmed) > 3 && trimmed[3] == ' ' && c == code) {
+				return code, lines, nil
+			}
+		}
+	}
+}
+
 // Verify tests whether an SMTP server allows unauthenticated relaying or anonymous message submission.
 func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {
 	conn, err := network.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
@@ -22,9 +49,13 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
 
-	banner, err := reader.ReadString('\n')
-	if err != nil || !strings.HasPrefix(banner, "220") {
-		return nil, fmt.Errorf("invalid smtp banner: %s", strings.TrimSpace(banner))
+	bannerCode, bannerLines, err := readSMTPReply(reader)
+	if err != nil || bannerCode != "220" {
+		bannerSummary := bannerCode
+		if len(bannerLines) > 0 {
+			bannerSummary = bannerLines[0]
+		}
+		return nil, fmt.Errorf("invalid smtp banner: %s", bannerSummary)
 	}
 
 	if _, err := writer.WriteString("HELO vaasuki.local\r\n"); err != nil {
@@ -32,8 +63,8 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 	}
 	_ = writer.Flush()
 
-	heloResp, err := reader.ReadString('\n')
-	if err != nil || !strings.HasPrefix(heloResp, "250") {
+	heloCode, _, err := readSMTPReply(reader)
+	if err != nil || heloCode != "250" {
 		return nil, nil
 	}
 
@@ -42,8 +73,8 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 	}
 	_ = writer.Flush()
 
-	mailResp, err := reader.ReadString('\n')
-	if err != nil || !strings.HasPrefix(mailResp, "250") {
+	mailCode, _, err := readSMTPReply(reader)
+	if err != nil || mailCode != "250" {
 		return nil, nil
 	}
 
@@ -52,15 +83,23 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 	}
 	_ = writer.Flush()
 
-	rcptResp, err := reader.ReadString('\n')
+	rcptCode, rcptLines, err := readSMTPReply(reader)
 	if err != nil {
 		return nil, nil
 	}
 
-	if strings.HasPrefix(rcptResp, "250") {
+	if rcptCode == "250" {
 		// Send RSET and QUIT gracefully
 		_, _ = writer.WriteString("RSET\r\nQUIT\r\n")
 		_ = writer.Flush()
+
+		evidence := []string{}
+		if len(bannerLines) > 0 {
+			evidence = append(evidence, fmt.Sprintf("Banner: %s", bannerLines[0]))
+		}
+		if len(rcptLines) > 0 {
+			evidence = append(evidence, fmt.Sprintf("RCPT TO: %s", rcptLines[len(rcptLines)-1]))
+		}
 
 		return &model.Finding{
 			Target:     host,
@@ -75,10 +114,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 				Method:    "none",
 				Status:    "successful",
 			},
-			Evidence: []string{
-				fmt.Sprintf("Banner: %s", strings.TrimSpace(banner)),
-				fmt.Sprintf("RCPT TO: %s", strings.TrimSpace(rcptResp)),
-			},
+			Evidence:  evidence,
 			Timestamp: time.Now().UTC(),
 		}, nil
 	}

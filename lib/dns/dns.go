@@ -59,10 +59,13 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 	if buf[2] == 0x13 && buf[3] == 0x37 {
 		flags := binary.BigEndian.Uint16(buf[4:6])
 		isResponse := (flags & 0x8000) != 0
+		rcode := flags & 0x000F // 0 = NOERROR, 4 = NOTIMP, 5 = REFUSED
+		ancount := binary.BigEndian.Uint16(buf[6:8])
 
-		if isResponse {
-			evidence := []string{fmt.Sprintf("DNS TCP CHAOS response received (%d bytes)", n)}
-			if bytes.Contains(buf[:n], []byte("Vaasuki")) || bytes.Contains(buf[:n], []byte("CoreDNS")) {
+		// Server must answer with NOERROR (0) and at least 1 Answer RR containing the CHAOS version
+		if isResponse && rcode == 0 && ancount > 0 {
+			evidence := []string{fmt.Sprintf("DNS TCP CHAOS response received (%d bytes, %d answers)", n, ancount)}
+			if bytes.Contains(buf[:n], []byte("Vaasuki")) || bytes.Contains(buf[:n], []byte("CoreDNS")) || bytes.Contains(buf[:n], []byte("BIND")) {
 				evidence = append(evidence, "CHAOS version banner leaked")
 			}
 

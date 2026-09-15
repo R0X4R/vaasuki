@@ -37,7 +37,22 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 	rn, _ := conn.Read(readBuf)
 	resp := string(readBuf[:rn])
 
-	if strings.Contains(resp, "#") || strings.Contains(resp, "$") || strings.Contains(resp, "Welcome") {
+	lowerResp := strings.ToLower(resp)
+	loginFailed := strings.Contains(lowerResp, "login incorrect") ||
+		strings.Contains(lowerResp, "login failed") ||
+		strings.Contains(lowerResp, "authentication failure") ||
+		strings.Contains(lowerResp, "invalid password") ||
+		strings.Contains(lowerResp, "login:") ||
+		strings.Contains(lowerResp, "password:")
+
+	// Authentic root prompt indicators (e.g. "root@", "# ", "~#", "/#")
+	hasRootShell := !loginFailed && (strings.Contains(resp, "root@") ||
+		strings.Contains(resp, "# ") ||
+		strings.HasSuffix(strings.TrimSpace(resp), "#") ||
+		strings.Contains(resp, "~#") ||
+		strings.Contains(resp, "/#"))
+
+	if hasRootShell {
 		return &model.Finding{
 			Target:     host,
 			Port:       port,

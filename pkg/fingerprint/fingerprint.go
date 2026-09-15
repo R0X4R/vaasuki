@@ -115,7 +115,7 @@ func probeBanner(host string, port int, timeout time.Duration) Service {
 	}
 	defer conn.Close()
 
-	_ = conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+	_ = conn.SetReadDeadline(time.Now().Add(timeout))
 	buf := make([]byte, 512)
 	n, err := conn.Read(buf)
 	if err != nil || n == 0 {
@@ -143,7 +143,7 @@ func probeRedis(host string, port int, timeout time.Duration) Service {
 	}
 	defer conn.Close()
 
-	_ = conn.SetDeadline(time.Now().Add(500 * time.Millisecond))
+	_ = conn.SetDeadline(time.Now().Add(timeout))
 	_, err = conn.Write([]byte("PING\r\n"))
 	if err != nil {
 		return ServiceUnknown
@@ -168,7 +168,7 @@ func probeMemcached(host string, port int, timeout time.Duration) Service {
 	}
 	defer conn.Close()
 
-	_ = conn.SetDeadline(time.Now().Add(500 * time.Millisecond))
+	_ = conn.SetDeadline(time.Now().Add(timeout))
 	_, err = conn.Write([]byte("version\r\n"))
 	if err != nil {
 		return ServiceUnknown
@@ -248,15 +248,8 @@ func probeHTTP(host string, port int, timeout time.Duration) Service {
 }
 
 func probeSMB(host string, port int, timeout time.Duration) Service {
-	conn, err := network.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
-	if err != nil {
-		return ServiceUnknown
-	}
-	defer conn.Close()
-
-	_ = conn.SetDeadline(time.Now().Add(500 * time.Millisecond))
 	// SMB1 Negotiate Header
-	smbPayload := []byte{
+	smb1Payload := []byte{
 		0x00, 0x00, 0x00, 0x2f, 0xff, 0x53, 0x4d, 0x42,
 		0x72, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xc8,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -265,7 +258,40 @@ func probeSMB(host string, port int, timeout time.Duration) Service {
 		0x20, 0x4c, 0x4d, 0x20, 0x30, 0x2e, 0x31, 0x32,
 		0x00,
 	}
-	if _, err := conn.Write(smbPayload); err != nil {
+	if svc := probeSMBPayload(host, port, timeout, smb1Payload); svc != ServiceUnknown {
+		return svc
+	}
+
+	// SMB2 Negotiate Header (for modern Windows / Samba with SMB1 disabled)
+	smb2Payload := []byte{
+		0x00, 0x00, 0x00, 0x6c,
+		0xfe, 0x53, 0x4d, 0x42, 0x40, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x24, 0x00, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x02, 0x02, 0x10, 0x02,
+		0x00, 0x03, 0x11, 0x03,
+	}
+	return probeSMBPayload(host, port, timeout, smb2Payload)
+}
+
+func probeSMBPayload(host string, port int, timeout time.Duration, payload []byte) Service {
+	conn, err := network.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
+	if err != nil {
+		return ServiceUnknown
+	}
+	defer conn.Close()
+
+	_ = conn.SetDeadline(time.Now().Add(timeout))
+	if _, err := conn.Write(payload); err != nil {
 		return ServiceUnknown
 	}
 
@@ -287,7 +313,7 @@ func probeMongo(host string, port int, timeout time.Duration) Service {
 	}
 	defer conn.Close()
 
-	_ = conn.SetDeadline(time.Now().Add(500 * time.Millisecond))
+	_ = conn.SetDeadline(time.Now().Add(timeout))
 	// Modern MongoDB OP_MSG {"isMaster": 1, "$db": "admin"}
 	mongoPayload := []byte{
 		0x37, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
