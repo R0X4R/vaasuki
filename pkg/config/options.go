@@ -32,7 +32,7 @@ type Options struct {
 func ParseOptions() (*Options, error) {
 	opts := &Options{}
 	flagSet := goflags.NewFlagSet()
-	flagSet.SetDescription("Vaasuki - Hunt Vulnerabilities in Exposed Services")
+	flagSet.SetDescription("𓆗 Vaasuki - Hunt Vulnerabilities in Exposed Services")
 
 	flagSet.CreateGroup("input", "Input",
 		flagSet.StringVarP(&opts.Target, "target", "u", "", "\tSingle target host, IP, or CIDR block"),
