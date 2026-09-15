@@ -32,7 +32,7 @@ Most scanners out there either stop at basic port discovery or flood you with sp
 * **Fast Pre-Flight Host Discovery** - It quickly weeds out dead IPs or unresolvable domains before starting scans, saving you time. You can also pass `-Pn` to treat all targets as online.
 * **Concurrent Worker Pool** - Built with worker goroutines to check thousands of ports and endpoints concurrently.
 * **Strict Scope Boundaries** - Supports allow and deny CIDR lists with explicit exclusions so you stay strictly within your testing scope.
-* **Clean Terminal and JSONL Output** - Delivers highlighted status tags (`[CNF]`, `[HIT]`, `[INF]`, `[WRN]`, `[ERR]`) and writes structured JSONL files for easy reporting.
+* **Clean Terminal and JSONL Output** - Delivers severity-categorized findings (`[CRITICAL]`, `[HIGH]`, `[MEDIUM]`, `[LOW]`, `[INFO]`) with service tags (`[SERVICE]`), target URLs, diagnostic tags (`[HIT]`, `[INF]`, `[WRN]`, `[ERR]`), and writes structured JSONL files for easy reporting.
 
 ## Verified Services
 

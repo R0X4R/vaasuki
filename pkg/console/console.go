@@ -122,13 +122,6 @@ func Findingf(sev, svc, targetURL, title string) {
 	}
 }
 
-// Confirmedf prints a verified finding message with a green CNF inside uncolored brackets.
-func Confirmedf(format string, args ...any) {
-	outMu.Lock()
-	defer outMu.Unlock()
-	tag := fmt.Sprintf("[%s]", color.HiGreenString("CNF"))
-	fmt.Fprintf(outDest, "%s "+format+"\n", append([]any{tag}, args...)...)
-}
 
 // ProtocolTag returns a protocol or service name inside uncolored brackets with cyan text.
 func ProtocolTag(proto string) string {

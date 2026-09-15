@@ -60,7 +60,7 @@ docker compose ps
 ### 5. Running the Scanner
 ```powershell
 # Scan all lab ports locally with active verification
-vaasuki scan -i 127.0.0.1 -p 2121,2122,2323,4445,6379,6380,27017,27018,9200,11211,2375,2379,8500,3890,1025,5354,5672,15672,9090,3000,8080,8088 --verify -o lab_findings.jsonl
+vaasuki -u 127.0.0.1 -p 1025,2121,2122,2323,2375,2379,3000,3890,4445,5354,6379,6380,8080,8088,8500,9090,9200,11211,15672,27017,27018 -vf -o lab_findings.jsonl
 ```
 
 ### 6. Tear Down
