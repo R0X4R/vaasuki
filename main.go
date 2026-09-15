@@ -23,7 +23,7 @@ import (
 	"github.com/R0X4R/vaasuki/pkg/target"
 )
 
-const Version = "2.5.0"
+const Version = "2.6.0"
 
 func main() {
 	if err := run(); err != nil {

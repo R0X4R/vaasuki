@@ -10,6 +10,33 @@ import (
 	"github.com/R0X4R/vaasuki/pkg/network"
 )
 
+// readFTPReply reads an RFC 959 compliant response, correctly consuming multi-line replies.
+func readFTPReply(reader *bufio.Reader) (string, []string, error) {
+	var lines []string
+	var code string
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return code, lines, err
+		}
+		trimmed := strings.TrimRight(line, "\r\n")
+		lines = append(lines, trimmed)
+
+		if len(trimmed) >= 3 {
+			c := trimmed[:3]
+			if code == "" {
+				code = c
+			}
+			// RFC 959: Continuation lines have '-' as 4th char (e.g. "220-").
+			// Terminating line has a space ' ' as 4th char (e.g. "220 ") or ends right after 3 digits.
+			if len(trimmed) == 3 || (len(trimmed) > 3 && trimmed[3] == ' ' && c == code) {
+				return code, lines, nil
+			}
+		}
+	}
+}
+
 // Verify performs active protocol handshake and anonymous authentication against an FTP service.
 func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {
 	conn, err := network.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
@@ -22,9 +49,13 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
 
-	banner, err := reader.ReadString('\n')
-	if err != nil || !strings.HasPrefix(banner, "220") {
-		return nil, fmt.Errorf("unexpected ftp banner: %s", strings.TrimSpace(banner))
+	bannerCode, bannerLines, err := readFTPReply(reader)
+	if err != nil || bannerCode != "220" {
+		bannerSummary := bannerCode
+		if len(bannerLines) > 0 {
+			bannerSummary = bannerLines[0]
+		}
+		return nil, fmt.Errorf("unexpected ftp banner: %s", bannerSummary)
 	}
 
 	if _, err := writer.WriteString("USER anonymous\r\n"); err != nil {
@@ -32,30 +63,36 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 	}
 	_ = writer.Flush()
 
-	userResp, err := reader.ReadString('\n')
+	userCode, userLines, err := readFTPReply(reader)
 	if err != nil {
 		return nil, err
 	}
 
 	var authSuccess bool
 	var evidence []string
-	evidence = append(evidence, strings.TrimSpace(banner))
+	if len(bannerLines) > 0 {
+		evidence = append(evidence, bannerLines[0])
+	}
 
-	if strings.HasPrefix(userResp, "230") {
+	if userCode == "230" {
 		authSuccess = true
-		evidence = append(evidence, strings.TrimSpace(userResp))
-	} else if strings.HasPrefix(userResp, "331") {
+		if len(userLines) > 0 {
+			evidence = append(evidence, userLines[len(userLines)-1])
+		}
+	} else if userCode == "331" {
 		if _, err := writer.WriteString("PASS anonymous@\r\n"); err != nil {
 			return nil, err
 		}
 		_ = writer.Flush()
 
-		passResp, err := reader.ReadString('\n')
+		passCode, passLines, err := readFTPReply(reader)
 		if err != nil {
 			return nil, err
 		}
-		evidence = append(evidence, strings.TrimSpace(passResp))
-		if strings.HasPrefix(passResp, "230") {
+		if len(passLines) > 0 {
+			evidence = append(evidence, passLines[len(passLines)-1])
+		}
+		if passCode == "230" {
 			authSuccess = true
 		}
 	}
