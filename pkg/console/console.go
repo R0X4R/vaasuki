@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/fatih/color"
@@ -92,6 +93,35 @@ func Hitf(format string, args ...any) {
 	fmt.Fprintf(outDest, "%s "+format+"\n", append([]any{tag}, args...)...)
 }
 
+// SeverityTag returns an uppercase severity name in colored brackets.
+func SeverityTag(sev string) string {
+	switch strings.ToLower(sev) {
+	case "critical":
+		return fmt.Sprintf("[%s]", color.HiRedString("CRITICAL"))
+	case "high":
+		return fmt.Sprintf("[%s]", color.RedString("HIGH"))
+	case "medium":
+		return fmt.Sprintf("[%s]", color.YellowString("MEDIUM"))
+	case "low":
+		return fmt.Sprintf("[%s]", color.BlueString("LOW"))
+	default:
+		return fmt.Sprintf("[%s]", color.HiGreenString("INFO"))
+	}
+}
+
+// Findingf prints a verified finding formatted as [SEVERITY] [SERVICE] targetURL - Title.
+func Findingf(sev, svc, targetURL, title string) {
+	outMu.Lock()
+	defer outMu.Unlock()
+	sevTag := SeverityTag(sev)
+	svcTag := ProtocolTag(svc)
+	if title != "" {
+		fmt.Fprintf(outDest, "%s %s %s - %s\n", sevTag, svcTag, targetURL, title)
+	} else {
+		fmt.Fprintf(outDest, "%s %s %s\n", sevTag, svcTag, targetURL)
+	}
+}
+
 // Confirmedf prints a verified finding message with a green CNF inside uncolored brackets.
 func Confirmedf(format string, args ...any) {
 	outMu.Lock()
@@ -102,7 +132,7 @@ func Confirmedf(format string, args ...any) {
 
 // ProtocolTag returns a protocol or service name inside uncolored brackets with cyan text.
 func ProtocolTag(proto string) string {
-	return fmt.Sprintf("[%s]", color.HiCyanString(proto))
+	return fmt.Sprintf("[%s]", color.HiCyanString(strings.ToUpper(proto)))
 }
 
 // Banner prints the tool startup banner.
