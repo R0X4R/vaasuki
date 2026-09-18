@@ -6,8 +6,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/R0X4R/vaasuki/pkg/model"
-	"github.com/R0X4R/vaasuki/pkg/network"
+	"github.com/R0X4R/vaasuki/v2/pkg/model"
+	"github.com/R0X4R/vaasuki/v2/pkg/network"
 )
 
 // Verify tests whether an Apache Kafka broker allows unauthenticated wire protocol requests.

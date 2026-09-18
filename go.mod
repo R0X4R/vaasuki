@@ -1,4 +1,4 @@
-module github.com/R0X4R/vaasuki
+module github.com/R0X4R/vaasuki/v2
 
 go 1.27.0
 

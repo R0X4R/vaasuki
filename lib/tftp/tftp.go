@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/R0X4R/vaasuki/pkg/model"
+	"github.com/R0X4R/vaasuki/v2/pkg/model"
 )
 
 // Verify tests whether a TFTP service is accessible over UDP.

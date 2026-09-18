@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/R0X4R/vaasuki/pkg/model"
-	"github.com/R0X4R/vaasuki/pkg/network"
+	"github.com/R0X4R/vaasuki/v2/pkg/model"
+	"github.com/R0X4R/vaasuki/v2/pkg/network"
 )
 
 // smbNegotiatePayload sends SMB1 and SMB2 dialect negotiations.

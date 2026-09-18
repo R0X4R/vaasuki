@@ -102,7 +102,7 @@ flowchart TD
 ## Installation
 
 ```bash
-go install -v github.com/R0X4R/vaasuki@latest
+go install -v github.com/R0X4R/vaasuki/v2@latest
 ```
 
 **Build from source**

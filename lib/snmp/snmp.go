@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/R0X4R/vaasuki/pkg/model"
+	"github.com/R0X4R/vaasuki/v2/pkg/model"
 )
 
 func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {

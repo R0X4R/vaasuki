@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/R0X4R/vaasuki/pkg/model"
-	"github.com/R0X4R/vaasuki/pkg/network"
+	"github.com/R0X4R/vaasuki/v2/pkg/model"
+	"github.com/R0X4R/vaasuki/v2/pkg/network"
 )
 
 // readFTPReply reads an RFC 959 compliant response, correctly consuming multi-line replies.
