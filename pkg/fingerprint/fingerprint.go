@@ -36,12 +36,36 @@ const (
 	ServiceLDAP          Service = "ldap"
 	ServiceDNS           Service = "dns"
 	ServiceHTTP          Service = "http"
+	ServiceRegistry      Service = "registry"
+	ServiceK8s           Service = "k8s"
+	ServiceKubelet       Service = "kubelet"
+	ServiceZooKeeper     Service = "zookeeper"
+	ServiceActuator      Service = "actuator"
+	ServiceSolr          Service = "solr"
+	ServiceHadoop        Service = "hadoop"
+	ServiceKibana        Service = "kibana"
+	ServiceJDWP          Service = "jdwp"
+	ServiceVNC           Service = "vnc"
+	ServiceRsync         Service = "rsync"
+	ServiceSNMP          Service = "snmp"
+	ServiceCouchDB       Service = "couchdb"
+	ServiceInfluxDB      Service = "influxdb"
+	ServiceClickHouse    Service = "clickhouse"
+	ServiceNeo4j         Service = "neo4j"
+	ServicePHPFPM        Service = "php-fpm"
+	ServiceKafka         Service = "kafka"
+	ServiceActiveMQ      Service = "activemq"
+		ServiceCassandra     Service = "cassandra"
+	ServiceZabbix        Service = "zabbix"
+	ServiceRMI           Service = "rmi"
+	ServiceTFTP          Service = "tftp"
+	ServiceNFS           Service = "nfs"
 	ServiceUnknown       Service = "unknown"
 )
 
 // Identify dynamically detects the service on an open host:port endpoint.
 func Identify(host string, port int, timeout time.Duration) Service {
-	// Step 1: Passive Banner Grab (Services that talk first, e.g. FTP, SMTP, Telnet, SSH)
+	// Step 1: Passive Banner Grab (Services that talk first, e.g. FTP, SMTP, Telnet, SSH, VNC, rsync)
 	if svc := probeBanner(host, port, timeout); svc != ServiceUnknown {
 		return svc
 	}
@@ -57,6 +81,15 @@ func Identify(host string, port int, timeout time.Duration) Service {
 		return svc
 	}
 	if svc := probeSMB(host, port, timeout); svc != ServiceUnknown {
+		return svc
+	}
+	if svc := probeZooKeeper(host, port, timeout); svc != ServiceUnknown {
+		return svc
+	}
+	if svc := probeJDWP(host, port, timeout); svc != ServiceUnknown {
+		return svc
+	}
+	if svc := probeKafka(host, port, timeout); svc != ServiceUnknown {
 		return svc
 	}
 	if svc := probeHTTP(host, port, timeout); svc != ServiceUnknown {
@@ -75,34 +108,82 @@ func Guess(port int) Service {
 		return ServiceTelnet
 	case 25, 465, 587, 1025, 2525:
 		return ServiceSMTP
-	case 445, 4445, 139:
-		return ServiceSMB
 	case 53, 5353, 5354:
 		return ServiceDNS
+	case 161:
+		return ServiceSNMP
 	case 389, 3890, 636:
 		return ServiceLDAP
+	case 445, 4445, 139:
+		return ServiceSMB
+	case 873:
+		return ServiceRsync
+	case 2181:
+		return ServiceZooKeeper
 	case 2375, 2376:
 		return ServiceDockerAPI
 	case 2379, 2380:
 		return ServiceEtcd
 	case 3000:
 		return ServiceGrafana
+	case 5000:
+		return ServiceRegistry
+	case 5601:
+		return ServiceKibana
 	case 5672, 15672:
 		return ServiceRabbitMQ
+	case 5900, 5901:
+		return ServiceVNC
+	case 5984:
+		return ServiceCouchDB
 	case 6379, 6380:
 		return ServiceRedis
+	case 6443, 8443:
+		return ServiceK8s
+	case 7474, 7687:
+		return ServiceNeo4j
+	case 8000, 5005:
+		return ServiceJDWP
 	case 8080:
 		return ServiceJenkins
+	case 8081:
+		return ServiceActuator
+	case 8086:
+		return ServiceInfluxDB
+	case 8123:
+		return ServiceClickHouse
+	case 8161, 61616:
+		return ServiceActiveMQ
 	case 8500:
 		return ServiceConsul
+	case 8983:
+		return ServiceSolr
+	case 9000:
+		return ServicePHPFPM
 	case 9090:
 		return ServicePrometheus
+	case 9092:
+		return ServiceKafka
 	case 9200, 9300:
 		return ServiceElasticsearch
+	case 9870, 50070:
+		return ServiceHadoop
+	case 10250, 10255:
+		return ServiceKubelet
 	case 11211:
 		return ServiceMemcached
 	case 27017, 27018:
 		return ServiceMongo
+	case 69:
+		return ServiceTFTP
+	case 1099, 9999:
+		return ServiceRMI
+	case 2049:
+		return ServiceNFS
+	case 9042:
+		return ServiceCassandra
+	case 10051:
+		return ServiceZabbix
 	default:
 		return ServiceUnknown
 	}
@@ -129,6 +210,12 @@ func probeBanner(host string, port int, timeout time.Duration) Service {
 			return ServiceSMTP
 		}
 		return ServiceFTP
+	}
+	if strings.HasPrefix(banner, "RFB ") {
+		return ServiceVNC
+	}
+	if strings.HasPrefix(banner, "@RSYNCD") {
+		return ServiceRsync
 	}
 	if bytes.Contains(buf[:n], []byte{0xff, 0xfd}) || bytes.Contains(buf[:n], []byte{0xff, 0xfb}) {
 		return ServiceTelnet
@@ -185,6 +272,46 @@ func probeMemcached(host string, port int, timeout time.Duration) Service {
 	return ServiceUnknown
 }
 
+func probeZooKeeper(host string, port int, timeout time.Duration) Service {
+	conn, err := network.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
+	if err != nil {
+		return ServiceUnknown
+	}
+	defer conn.Close()
+
+	_ = conn.SetDeadline(time.Now().Add(timeout))
+	if _, err := conn.Write([]byte("srvr\n")); err != nil {
+		return ServiceUnknown
+	}
+
+	buf := make([]byte, 256)
+	n, err := conn.Read(buf)
+	if err == nil && (strings.Contains(string(buf[:n]), "Zookeeper version") || strings.Contains(string(buf[:n]), "Environment")) {
+		return ServiceZooKeeper
+	}
+	return ServiceUnknown
+}
+
+func probeJDWP(host string, port int, timeout time.Duration) Service {
+	conn, err := network.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
+	if err != nil {
+		return ServiceUnknown
+	}
+	defer conn.Close()
+
+	_ = conn.SetDeadline(time.Now().Add(timeout))
+	if _, err := conn.Write([]byte("JDWP-Handshake")); err != nil {
+		return ServiceUnknown
+	}
+
+	buf := make([]byte, 14)
+	n, err := conn.Read(buf)
+	if err == nil && n == 14 && string(buf) == "JDWP-Handshake" {
+		return ServiceJDWP
+	}
+	return ServiceUnknown
+}
+
 func probeHTTP(host string, port int, timeout time.Duration) Service {
 	client := &http.Client{
 		Timeout: timeout,
@@ -212,12 +339,20 @@ func probeHTTP(host string, port int, timeout time.Duration) Service {
 			continue
 		}
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 8192))
+		distHeader := resp.Header.Get("Docker-Distribution-Api-Version")
+		kbnHeader := resp.Header.Get("kbn-name")
 		resp.Body.Close()
 
 		bodyStr := string(body)
 		jenkinsHeader := resp.Header.Get("X-Jenkins")
 		serverHeader := strings.ToLower(resp.Header.Get("Server"))
 
+		if strings.Contains(distHeader, "registry/2.0") {
+			return ServiceRegistry
+		}
+		if kbnHeader != "" {
+			return ServiceKibana
+		}
 		if strings.Contains(bodyStr, "cluster_name") || strings.Contains(bodyStr, "tagline") {
 			return ServiceElasticsearch
 		}
@@ -242,13 +377,18 @@ func probeHTTP(host string, port int, timeout time.Duration) Service {
 		if strings.Contains(bodyStr, "RabbitMQ") {
 			return ServiceRabbitMQ
 		}
+		if strings.Contains(bodyStr, "couchdb") {
+			return ServiceCouchDB
+		}
+		if strings.Contains(bodyStr, "neo4j") {
+			return ServiceNeo4j
+		}
 		return ServiceHTTP
 	}
 	return ServiceUnknown
 }
 
 func probeSMB(host string, port int, timeout time.Duration) Service {
-	// SMB1 Negotiate Header
 	smb1Payload := []byte{
 		0x00, 0x00, 0x00, 0x2f, 0xff, 0x53, 0x4d, 0x42,
 		0x72, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xc8,
@@ -262,7 +402,6 @@ func probeSMB(host string, port int, timeout time.Duration) Service {
 		return svc
 	}
 
-	// SMB2 Negotiate Header (for modern Windows / Samba with SMB1 disabled)
 	smb2Payload := []byte{
 		0x00, 0x00, 0x00, 0x6c,
 		0xfe, 0x53, 0x4d, 0x42, 0x40, 0x00, 0x00, 0x00,
@@ -314,7 +453,6 @@ func probeMongo(host string, port int, timeout time.Duration) Service {
 	defer conn.Close()
 
 	_ = conn.SetDeadline(time.Now().Add(timeout))
-	// Modern MongoDB OP_MSG {"isMaster": 1, "$db": "admin"}
 	mongoPayload := []byte{
 		0x37, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0xdd, 0x07, 0x00, 0x00,
@@ -335,6 +473,32 @@ func probeMongo(host string, port int, timeout time.Duration) Service {
 	}
 	if bytes.Contains(buf[:n], []byte("ismaster")) || bytes.Contains(buf[:n], []byte("isWritablePrimary")) || bytes.Contains(buf[:n], []byte("maxBsonObjectSize")) {
 		return ServiceMongo
+	}
+	return ServiceUnknown
+}
+
+func probeKafka(host string, port int, timeout time.Duration) Service {
+	conn, err := network.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
+	if err != nil {
+		return ServiceUnknown
+	}
+	defer conn.Close()
+
+	_ = conn.SetDeadline(time.Now().Add(timeout))
+	req := []byte{
+		0x00, 0x00, 0x00, 0x0a,
+		0x00, 0x12,
+		0x00, 0x00,
+		0x00, 0x00, 0x04, 0xd2,
+		0xff, 0xff,
+	}
+	if _, err := conn.Write(req); err != nil {
+		return ServiceUnknown
+	}
+	buf := make([]byte, 8)
+	n, err := conn.Read(buf)
+	if err == nil && n >= 8 && buf[4] == 0x00 && buf[5] == 0x00 && buf[6] == 0x04 && buf[7] == 0xd2 {
+		return ServiceKafka
 	}
 	return ServiceUnknown
 }

@@ -39,22 +39,46 @@ Most scanners out there either stop at basic port discovery or flood you with sp
 | Service | Common Ports | Verification Check | Confirmed Vulnerability Finding |
 | --- | --- | --- | --- |
 | **FTP** | `21`, `2121` | Active anonymous handshake | FTP Anonymous Authentication Enabled |
-| **Redis** | `6379`, `6380` | Unauthenticated `PING` command | Unauthenticated Redis Database Access |
-| **MongoDB** | `27017`, `27018` | OP_MSG wire protocol query | Unauthenticated MongoDB Administrative Database Access |
+| **Telnet** | `23`, `2323` | Cleartext negotiation and login prompt check | Exposed Insecure Telnet Cleartext Protocol Service |
+| **SMTP** | `25`, `1025` | Open mail relay handshake | SMTP Insecure Open Mail Relay Submission Allowed |
+| **DNS** | `53`, `5354` | CHAOS class `version.bind` query | Exposed DNS Nameserver Responding to CHAOS Version Queries |
+| **TFTP** | `69` | UDP Read Request (`RRQ`) validation | Exposed Unauthenticated TFTP Service |
+| **SNMP** | `161` | UDP community string `public` probe | SNMP Service Accepts Default Community String 'public' |
+| **LDAP** | `389`, `3890` | BER-encoded LDAPv3 anonymous bind | LDAP Anonymous Directory Bind Authentication Permitted |
+| **SMB / Samba** | `445`, `4445` | Dialect negotiation handshake | Active SMBv1/SMBv2 File Sharing Service Detected |
+| **rsync** | `873` | `@RSYNCD: 31.0` module listing handshake | Exposed rsync Daemon (Anonymous Modules Found) |
+| **Java RMI / JMX** | `1099`, `9999` | JRMI StreamProtocol `ProtocolAck` handshake | Exposed Java RMI / JMX Registry Without Authentication |
+| **NFS** | `2049` | ONC RPC NULL call with `AUTH_NULL` | Exposed Network File System (NFS) Service |
+| **ZooKeeper** | `2181` | 4LW commands (`stat`, `srvr`, `envi`, `isro`) | Unauthenticated Apache ZooKeeper Access |
 | **Docker API** | `2375`, `2376` | REST API probe via `/_ping` and `/version` | Exposed Docker Daemon API Without Authentication |
 | **etcd** | `2379`, `2380` | Key-value store probe via `/version` | Unauthenticated etcd Key-Value Store Access |
-| **Memcached** | `11211` | ASCII protocol `stats` and `version` execution | Unauthenticated Memcached Server Access |
-| **Elasticsearch** | `9200`, `9300` | HTTP cluster health query | Unauthenticated Elasticsearch Cluster Access |
-| **HashiCorp Consul** | `8500` | HTTP agent status probe | Unauthenticated HashiCorp Consul Agent API Access |
-| **LDAP** | `389`, `3890` | BER-encoded LDAPv3 anonymous bind | LDAP Anonymous Directory Bind Authentication Permitted |
-| **SMTP** | `25`, `1025` | Open mail relay handshake | SMTP Insecure Open Mail Relay Submission Allowed |
-| **RabbitMQ** | `15672` | Management API check with default credentials | RabbitMQ Default Administrative Credentials |
-| **SMB / Samba** | `445`, `4445` | Dialect negotiation handshake | Active SMBv1/SMBv2 File Sharing Service Detected |
-| **DNS** | `53`, `5354` | CHAOS class `version.bind` query | Exposed DNS Nameserver Responding to CHAOS Version Queries |
-| **Telnet** | `23`, `2323` | Cleartext negotiation and login prompt check | Exposed Insecure Telnet Cleartext Protocol Service |
 | **Grafana** | `3000` | Anonymous organization check | Grafana Anonymous Access Enabled |
+| **Docker Registry** | `5000` | Registry v2 `_catalog` enumeration | Unauthenticated Docker Registry v2 Access |
+| **Kibana** | `5601` | Dashboard `/api/status` & Elasticsearch cross-check | Exposed Unauthenticated Kibana Dashboard |
+| **RabbitMQ** | `5672`, `15672` | Management API & AMQP protocol verification | RabbitMQ Default Administrative Credentials |
+| **VNC** | `5900` | RFB 003.008 SecurityType `None` handshake | Unauthenticated VNC Remote Desktop Access |
+| **CouchDB** | `5984` | DB listing `/_all_dbs` & cluster membership leak | Unauthenticated Apache CouchDB Access (Admin Party) |
+| **Redis** | `6379`, `6380` | Unauthenticated `PING` command | Unauthenticated Redis Database Access |
+| **Kubernetes API** | `6443`, `8443` | Anonymous RBAC access to `/api/v1/namespaces` | Unauthenticated Kubernetes API Server Access |
+| **Neo4j** | `7474`, `7687` | Cypher query execution & `authDisabled` check | Unauthenticated Neo4j Graph Database Access |
+| **JDWP** | `8000`, `5005` | Java Debug Wire Protocol `JDWP-Handshake` | Exposed Java Debug Wire Protocol (JDWP) |
 | **Jenkins** | `8080` | Unauthenticated dashboard probe | Exposed Jenkins CI/CD Instance |
+| **Spring Actuator** | `8080`, `8081` | Direct access to `/actuator/env`, `/heapdump` | Exposed Spring Boot Actuator |
+| **InfluxDB** | `8086` | Unauthenticated `/query?q=SHOW DATABASES` | Unauthenticated InfluxDB Query Access |
+| **ClickHouse** | `8123`, `9000` | HTTP interface `SELECT 1` query probe | Unauthenticated ClickHouse HTTP Query Access |
+| **ActiveMQ** | `8161`, `61616`| Web console creds & OpenWire CVE-2023-46604 check | Unauthenticated ActiveMQ Web Console / OpenWire |
+| **HashiCorp Consul** | `8500` | HTTP agent status probe | Unauthenticated HashiCorp Consul Agent API Access |
+| **Apache Solr** | `8983` | Admin core status `/solr/admin/cores` | Unauthenticated Apache Solr Admin Core Access |
+| **PHP-FPM** | `9000` | Raw FastCGI `FCGI_GET_VALUES` probe | Exposed Raw PHP-FPM FastCGI Daemon |
+| **Cassandra** | `9042` | CQL v4 `STARTUP` -> `READY` frame (no auth challenge) | Unauthenticated Apache Cassandra Cluster Access |
 | **Prometheus** | `9090` | Metrics and health query | Unauthenticated Prometheus Metrics API Exposed |
+| **Apache Kafka** | `9092` | Raw wire protocol `MetadataRequest` probe | Unauthenticated Apache Kafka Broker Access |
+| **Elasticsearch** | `9200`, `9300` | HTTP cluster health query | Unauthenticated Elasticsearch Cluster Access |
+| **Hadoop HDFS** | `9870`, `50070`| WebHDFS `/webhdfs/v1/?op=LISTSTATUS` directory probe | Unauthenticated Hadoop WebHDFS Directory Access |
+| **Zabbix** | `10051` | `ZBXD\x01` unauthenticated trapper protocol probe | Unauthenticated Zabbix Server Trapper Port |
+| **Kubelet API** | `10250`, `10255`| Anonymous `/pods` and `/stats/summary` disclosure | Unauthenticated Kubelet API Pod Listing Access |
+| **Memcached** | `11211` | ASCII protocol `stats` and `version` execution | Unauthenticated Memcached Server Access |
+| **MongoDB** | `27017`, `27018` | OP_MSG wire protocol query | Unauthenticated MongoDB Administrative Database Access |
 
 
 ## How It Works
@@ -187,7 +211,7 @@ docker compose up -d --build
 To run Vaasuki against all lab endpoints
 
 ```powershell
-vaasuki -u 127.0.0.1 -p 1025,2121,2122,2323,2375,2379,3000,3890,4445,5354,6379,6380,8080,8500,9090,9200,11211,15672,27017,27018
+vaasuki -u 127.0.0.1 -p 161,873,1025,2121,2122,2181,2323,2375,2379,3000,3890,4445,5000,5354,5601,5900,6379,6380,6443,7474,8000,8080,8081,8086,8123,8161,8443,8500,8983,9000,9090,9092,9200,9870,10250,10255,11211,15672,27017,27018
 ```
 
 ## Credits & Acknowledgements
