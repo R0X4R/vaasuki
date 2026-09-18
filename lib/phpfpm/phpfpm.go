@@ -2,6 +2,7 @@ package phpfpm
 
 import (
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/R0X4R/vaasuki/pkg/model"
@@ -25,13 +26,12 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		return nil, err
 	}
 
-	buf := make([]byte, 16)
-	n, err := conn.Read(buf)
-	if err != nil || n < 8 {
+	header := make([]byte, 8)
+	if _, err := io.ReadFull(conn, header); err != nil {
 		return nil, nil
 	}
 
-	if buf[0] == 0x01 && (buf[1] == 0x0a || buf[1] == 0x03 || buf[1] == 0x07) {
+	if header[0] == 0x01 && (header[1] == 0x0a || header[1] == 0x03 || header[1] == 0x07) {
 		return &model.Finding{
 			Target:     host,
 			Port:       port,

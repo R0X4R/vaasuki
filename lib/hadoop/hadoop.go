@@ -4,7 +4,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,19 +15,23 @@ import (
 )
 
 func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	defer tr.CloseIdleConnections()
+
 	client := &http.Client{
 		Timeout: timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
+		Transport: tr,
 	}
 
+	targetHostPort := net.JoinHostPort(host, strconv.Itoa(port))
 	schemes := []string{"http", "https"}
 	for _, scheme := range schemes {
-		url := fmt.Sprintf("%s://%s:%d/webhdfs/v1/?op=LISTSTATUS", scheme, host, port)
+		url := fmt.Sprintf("%s://%s/webhdfs/v1/?op=LISTSTATUS", scheme, targetHostPort)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			continue
@@ -43,7 +49,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 			evidence := []string{"HTTP 200 OK on /webhdfs/v1/?op=LISTSTATUS"}
 
 			// Test op=CREATE reachability (check 307 redirect vs 401 without executing write)
-			createURL := fmt.Sprintf("%s://%s:%d/webhdfs/v1/vaasuki_write_test?op=CREATE&noredirect=true", scheme, host, port)
+			createURL := fmt.Sprintf("%s://%s/webhdfs/v1/vaasuki_write_test?op=CREATE&noredirect=true", scheme, targetHostPort)
 			if createReq, err := http.NewRequest("PUT", createURL, nil); err == nil {
 				network.ApplyCustomHeaders(createReq)
 				if createResp, err := client.Do(createReq); err == nil {

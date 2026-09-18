@@ -309,6 +309,28 @@ func (sc *scanCoordinator) verifyEndpoint(ctx context.Context, ep target.Target)
 		return
 	}
 
+	// UDP services cannot be verified via TCP handshake; route directly to protocol verifiers
+	if ep.Port == 161 || ep.Port == 69 {
+		if !sc.opts.Verify {
+			return
+		}
+		svc := fingerprint.Guess(ep.Port)
+		finding, _ := dispatcher.VerifyTarget(svc, ep.Host, ep.Port, sc.timeout)
+		if finding != nil && finding.Confidence == model.Confirmed {
+			atomic.AddInt64(&sc.openPortsCount, 1)
+			atomic.AddInt64(&sc.confirmedCount, 1)
+			console.Verbosef("Open port verified: %s:%d (UDP)", ep.Host, ep.Port)
+			targetURL := fmt.Sprintf("%s:%d", ep.Host, ep.Port)
+			serviceName := finding.Service
+			if serviceName == "" {
+				serviceName = finding.Protocol
+			}
+			console.Findingf(finding.Severity, serviceName, targetURL, finding.Title)
+			sc.recordFinding(finding)
+		}
+		return
+	}
+
 	if !network.IsPortOpen(ep.Host, ep.Port, sc.timeout) {
 		console.Verbosef("Connection failed: %s:%d (closed or dropped)", ep.Host, ep.Port)
 		return

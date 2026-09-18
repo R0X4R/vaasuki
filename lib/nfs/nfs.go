@@ -3,6 +3,7 @@ package nfs
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/R0X4R/vaasuki/pkg/model"
@@ -38,33 +39,34 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		return nil, err
 	}
 
-	buf := make([]byte, 32)
-	n, err := conn.Read(buf)
-	if err != nil || n < 12 {
+	// Read full RPC reply header: fragment(4) + XID(4) + MsgType(4) + ReplyStat(4) + VerfFlavor(4) + VerfLen(4) + AcceptStat(4) = 28 bytes
+	buf := make([]byte, 28)
+	if _, err := io.ReadFull(conn, buf); err != nil {
 		return nil, nil
 	}
 
-	// Check matching XID in reply
-	if n >= 8 {
-		xid := binary.BigEndian.Uint32(buf[4:8])
-		if xid == 0x12345678 {
-			return &model.Finding{
-				Target:     host,
-				Port:       port,
-				Protocol:   "nfs",
-				Service:    "nfs",
-				Title:      "Exposed Network File System (NFS) Service",
-				Severity:   "high",
-				Confidence: model.Confirmed,
-				Auth: model.AuthResult{
-					Attempted: true,
-					Method:    "none",
-					Status:    "successful",
-				},
-				Evidence:  []string{"NFS RPC NULL procedure succeeded with AUTH_NULL"},
-				Timestamp: time.Now().UTC(),
-			}, nil
-		}
+	xid := binary.BigEndian.Uint32(buf[4:8])
+	msgType := binary.BigEndian.Uint32(buf[8:12])     // 1 = REPLY
+	replyStat := binary.BigEndian.Uint32(buf[12:16])  // 0 = MSG_ACCEPTED
+	acceptStat := binary.BigEndian.Uint32(buf[24:28]) // 0 = SUCCESS
+
+	if xid == 0x12345678 && msgType == 1 && replyStat == 0 && acceptStat == 0 {
+		return &model.Finding{
+			Target:     host,
+			Port:       port,
+			Protocol:   "nfs",
+			Service:    "nfs",
+			Title:      "Exposed Network File System (NFS) Service",
+			Severity:   "high",
+			Confidence: model.Confirmed,
+			Auth: model.AuthResult{
+				Attempted: true,
+				Method:    "none",
+				Status:    "successful",
+			},
+			Evidence:  []string{"NFS RPC NULL procedure succeeded with MSG_ACCEPTED and SUCCESS status"},
+			Timestamp: time.Now().UTC(),
+		}, nil
 	}
 
 	return nil, nil

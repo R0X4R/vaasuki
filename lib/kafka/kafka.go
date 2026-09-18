@@ -3,6 +3,7 @@ package kafka
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/R0X4R/vaasuki/pkg/model"
@@ -34,14 +35,13 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		return nil, err
 	}
 
-	buf := make([]byte, 32)
-	n, err := conn.Read(buf)
-	if err != nil || n < 8 {
+	header := make([]byte, 8)
+	if _, err := io.ReadFull(conn, header); err != nil {
 		return nil, nil
 	}
 
 	// First 4 bytes = response size, next 4 bytes = CorrelationId
-	corrID := binary.BigEndian.Uint32(buf[4:8])
+	corrID := binary.BigEndian.Uint32(header[4:8])
 	if corrID == 1234 {
 		return &model.Finding{
 			Target:     host,

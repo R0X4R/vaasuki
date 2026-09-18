@@ -4,7 +4,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,19 +15,23 @@ import (
 )
 
 func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	defer tr.CloseIdleConnections()
+
 	client := &http.Client{
 		Timeout: timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
+		Transport: tr,
 	}
 
+	targetHostPort := net.JoinHostPort(host, strconv.Itoa(port))
 	schemes := []string{"http", "https"}
 	for _, scheme := range schemes {
-		url := fmt.Sprintf("%s://%s:%d/_all_dbs", scheme, host, port)
+		url := fmt.Sprintf("%s://%s/_all_dbs", scheme, targetHostPort)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			continue
@@ -50,7 +56,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 				evidence := []string{fmt.Sprintf("Databases listed: %s", bodyStr)}
 
 				// Check /_membership for cluster info leak
-				memURL := fmt.Sprintf("%s://%s:%d/_membership", scheme, host, port)
+				memURL := fmt.Sprintf("%s://%s/_membership", scheme, targetHostPort)
 				if memReq, err := http.NewRequest("GET", memURL, nil); err == nil {
 					network.ApplyCustomHeaders(memReq)
 					if memResp, err := client.Do(memReq); err == nil {

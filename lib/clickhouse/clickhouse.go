@@ -4,7 +4,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,19 +15,23 @@ import (
 )
 
 func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	defer tr.CloseIdleConnections()
+
 	client := &http.Client{
 		Timeout: timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
+		Transport: tr,
 	}
 
+	targetHostPort := net.JoinHostPort(host, strconv.Itoa(port))
 	schemes := []string{"http", "https"}
 	for _, scheme := range schemes {
-		url := fmt.Sprintf("%s://%s:%d/?query=SELECT%%201", scheme, host, port)
+		url := fmt.Sprintf("%s://%s/?query=SELECT%%201", scheme, targetHostPort)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			continue

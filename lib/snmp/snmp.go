@@ -41,8 +41,9 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		return nil, nil
 	}
 
-	// Validate SNMP response format: ASN.1 SEQUENCE (0x30) and GetResponse PDU (0xa2)
-	if buf[0] != 0x30 || !bytes.Contains(buf[:n], []byte{0xa2}) {
+	// Validate SNMP response: ASN.1 SEQUENCE (0x30), GetResponse PDU (0xa2), matching Request ID, and community 'public'
+	reqID := []byte{0x01, 0x02, 0x03, 0x04}
+	if buf[0] != 0x30 || !bytes.Contains(buf[:n], []byte{0xa2}) || !bytes.Contains(buf[:n], reqID) || !bytes.Contains(buf[:n], []byte("public")) {
 		return nil, nil
 	}
 

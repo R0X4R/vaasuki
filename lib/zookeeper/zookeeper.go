@@ -61,7 +61,6 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 	}
 
 	mode := "read-only"
-	severity := "medium"
 	if conn2, err := network.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout); err == nil {
 		_ = conn2.SetDeadline(time.Now().Add(timeout))
 		_, _ = conn2.Write([]byte("isro\n"))
@@ -70,11 +69,10 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		conn2.Close()
 		if strings.Contains(string(buf[:n]), "rw") {
 			mode = "read-write"
-			severity = "high"
 		}
 	}
 
-	evidence := []string{fmt.Sprintf("ZooKeeper mode: %s", mode)}
+	evidence := []string{fmt.Sprintf("ZooKeeper cluster mode: %s", mode)}
 	if len(lines) > 0 {
 		evidence = append(evidence, lines[0])
 	}
@@ -84,8 +82,8 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		Port:       port,
 		Protocol:   "zookeeper",
 		Service:    "zookeeper",
-		Title:      fmt.Sprintf("Unauthenticated Apache ZooKeeper Access (%s mode)", mode),
-		Severity:   severity,
+		Title:      fmt.Sprintf("Unauthenticated Apache ZooKeeper 4LW Access (%s mode)", mode),
+		Severity:   "medium",
 		Confidence: model.Confirmed,
 		Auth: model.AuthResult{
 			Attempted: true,

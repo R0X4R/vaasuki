@@ -15,7 +15,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		return nil, err
 	}
 
-	conn, err := net.DialUDP("udp", nil, addr)
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
 		return nil, err
 	}
@@ -30,13 +30,13 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		'n', 'e', 't', 'a', 's', 'c', 'i', 'i', 0x00,
 	}
 
-	if _, err := conn.Write(rrq); err != nil {
+	if _, err := conn.WriteToUDP(rrq, addr); err != nil {
 		return nil, err
 	}
 
 	buf := make([]byte, 512)
-	n, err := conn.Read(buf)
-	if err != nil || n < 4 {
+	n, rAddr, err := conn.ReadFromUDP(buf)
+	if err != nil || n < 4 || !rAddr.IP.Equal(addr.IP) {
 		return nil, nil
 	}
 

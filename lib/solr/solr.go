@@ -4,7 +4,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,19 +15,23 @@ import (
 )
 
 func Verify(host string, port int, timeout time.Duration) (*model.Finding, error) {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	defer tr.CloseIdleConnections()
+
 	client := &http.Client{
 		Timeout: timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
+		Transport: tr,
 	}
 
+	targetHostPort := net.JoinHostPort(host, strconv.Itoa(port))
 	schemes := []string{"http", "https"}
 	for _, scheme := range schemes {
-		url := fmt.Sprintf("%s://%s:%d/solr/admin/cores?action=STATUS&wt=json", scheme, host, port)
+		url := fmt.Sprintf("%s://%s/solr/admin/cores?action=STATUS&wt=json", scheme, targetHostPort)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			continue
@@ -52,7 +58,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 					Protocol:   scheme,
 					Service:    "solr",
 					Title:      "Unauthenticated Apache Solr Admin Core Access",
-					Severity:   "critical",
+					Severity:   "high",
 					Confidence: model.Confirmed,
 					Auth: model.AuthResult{
 						Attempted: true,

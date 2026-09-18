@@ -3,6 +3,7 @@ package jdwp
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/R0X4R/vaasuki/pkg/model"
@@ -23,8 +24,7 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 	}
 
 	buf := make([]byte, 14)
-	n, err := conn.Read(buf)
-	if err != nil || n != 14 {
+	if _, err := io.ReadFull(conn, buf); err != nil {
 		return nil, nil
 	}
 

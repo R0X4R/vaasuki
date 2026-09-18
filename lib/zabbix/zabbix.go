@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -33,32 +34,43 @@ func Verify(host string, port int, timeout time.Duration) (*model.Finding, error
 		return nil, err
 	}
 
-	buf := make([]byte, 256)
-	n, err := conn.Read(buf)
-	if err != nil || n < 13 {
+	hdr := make([]byte, 13)
+	if _, err := io.ReadFull(conn, hdr); err != nil {
 		return nil, nil
 	}
 
-	if bytes.HasPrefix(buf[:n], []byte("ZBXD\x01")) {
-		body := string(buf[13:n])
-		if strings.Contains(body, "response") {
-			return &model.Finding{
-				Target:     host,
-				Port:       port,
-				Protocol:   "zabbix",
-				Service:    "zabbix",
-				Title:      "Unauthenticated Zabbix Server Trapper Port",
-				Severity:   "medium",
-				Confidence: model.Confirmed,
-				Auth: model.AuthResult{
-					Attempted: true,
-					Method:    "none",
-					Status:    "successful",
-				},
-				Evidence:  []string{fmt.Sprintf("Zabbix trapper response: %s", body)},
-				Timestamp: time.Now().UTC(),
-			}, nil
-		}
+	if !bytes.HasPrefix(hdr, []byte("ZBXD\x01")) {
+		return nil, nil
+	}
+
+	dataLen := binary.LittleEndian.Uint64(hdr[5:13])
+	if dataLen == 0 || dataLen > 65536 {
+		return nil, nil
+	}
+
+	bodyBuf := make([]byte, dataLen)
+	if _, err := io.ReadFull(conn, bodyBuf); err != nil {
+		return nil, nil
+	}
+
+	body := string(bodyBuf)
+	if strings.Contains(body, `"response"`) && (strings.Contains(body, `"success"`) || strings.Contains(body, `"info"`)) {
+		return &model.Finding{
+			Target:     host,
+			Port:       port,
+			Protocol:   "zabbix",
+			Service:    "zabbix",
+			Title:      "Unauthenticated Zabbix Server Trapper Port",
+			Severity:   "medium",
+			Confidence: model.Confirmed,
+			Auth: model.AuthResult{
+				Attempted: true,
+				Method:    "none",
+				Status:    "successful",
+			},
+			Evidence:  []string{fmt.Sprintf("Zabbix trapper response: %s", body)},
+			Timestamp: time.Now().UTC(),
+		}, nil
 	}
 
 	return nil, nil
