@@ -108,7 +108,7 @@ go install -v github.com/R0X4R/vaasuki@latest
 **Build from source**
 
 ```bash
-git clone https://github.com/R0X4R/vaasuki.git && cd vaasuki && go build -o vaasuki main.go
+git clone https://github.com/R0X4R/vaasuki.git && cd vaasuki && go install -v
 ```
 
 
